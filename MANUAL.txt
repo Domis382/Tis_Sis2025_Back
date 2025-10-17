@@ -1,0 +1,26 @@
+## Requisitos
+- Node 20 LTS
+- PostgreSQL 16
+- Prisma
+
+## Pasos (Dev)
+1) Clonar y entrar
+   git clone https://github.com/Domis382/Tis_Sis2025_Back.git
+   cd back
+
+2) Crear archivo .env
+   cp .env.example .env
+   # (ajusta DATABASE_URL si usas otra contraseña/puerto)
+
+3) Instalar dependencias
+   npm i
+
+4) Generar Prisma Client
+   npx prisma generate
+
+5) (OPCIONAL NO RECOMENDADO)Con base ya creada y con tablas (caso de este proyecto):
+   npx prisma db pull   # opcional, si quieren refrescar schema desde la BD
+
+6) Levantar
+   npm run dev
+   # Servidor en http://localhost:3000
