@@ -1,0 +1,121 @@
+Manual de uso de carpetas (backend)
+Visión general
+prisma/                  # esquema y migraciones de BD
+src/
+ ├─ config/              # configuración (Prisma, CORS, env, logger)
+ ├─ controllers/         # capa HTTP: recibe req/res, valida y llama al servicio
+ ├─ middlewares/         # middlewares Express (errores, auth, validar body)
+ ├─ repositories/        # acceso a datos (Prisma). ¡Sin lógica de negocio!
+ ├─ routes/              # definición de endpoints y montaje de routers
+ ├─ services/            # reglas de negocio / orquestación
+ ├─ utils/               # utilidades comunes (respuestas, helpers, constantes)
+ └─ server.js            # entrada de la app (Express)
+
+Flujo de una petición
+
+Route → Controller → Service → Repository → Prisma(DB) → Service → Controller → Response
+
+Qué va en cada carpeta
+1) src/config/
+
+Objetivo: inicializar y exponer configuraciones globales.
+
+Ejemplos:
+
+prisma.js → instancia única de PrismaClient.
+
+env.js → lectura segura de variables de entorno.
+
+logger.js (opcional) → configuración de logs (pino/winston).
+
+// env.js
+import dotenv from 'dotenv';
+dotenv.config();
+export const env = {
+  port: process.env.PORT ?? 3000,
+  databaseUrl: process.env.DATABASE_URL,
+};
+
+2) src/routes/
+
+Objetivo: declarar endpoints y montar sub-rutas por dominio.
+
+Regla: cada entidad tiene su archivo de rutas.
+
+Ejemplo:
+
+routes/index.js → router.use('/areas', areaRoutes)
+
+routes/area.routes.js → GET/POST/PUT/DELETE de “áreas”
+
+No poner lógica aquí; sólo wiring.
+
+3) src/controllers/
+
+Objetivo: hablar HTTP: lee req, valida datos simples, llama al servicio y devuelve respuesta.
+
+Reglas:
+
+No acceder a Prisma aquí.
+
+Manejar códigos de estado y mensajes claros.
+
+Ejemplo: area.controller.js con getAllAreas, createArea, etc.
+
+4) src/services/
+
+Objetivo: lógica de negocio. Aplica reglas, compone múltiples repositorios, maneja transacciones.
+
+Reglas:
+
+No usar req/res.
+
+Si hay transacciones: prisma.$transaction([...]).
+
+Ejemplo: area.service.js agrupa operaciones; decide qué repos llamar y cómo.
+
+5) src/repositories/
+
+Objetivo: acceso a datos. Cada repo mapea 1 entidad o agregado.
+
+Reglas:
+
+Solo Prisma aquí.
+
+No meter reglas de negocio.
+
+Ejemplo: area.repository.js con findAll, create, update, remove.
+
+6) src/middlewares/
+
+Objetivo: piezas reutilizables para el pipeline HTTP.
+
+Típicos:
+
+errorHandler.js (debe ir al final con app.use).
+
+auth.js (JWT/roles).
+
+validate.js (zod/joi para validar body/query/params).
+
+rateLimit.js (opcional).
+
+7) src/utils/
+
+Objetivo: helpers y utilidades puras.
+
+Ejemplos: response.js (formato de respuesta), constants.js, csv.js, excel.js, date.js.
+
+8) prisma/
+
+schema.prisma → modelos.
+
+migrations/ → historial de migraciones.
+
+Comandos útiles:
+
+npx prisma db pull (si el esquema viene de la BD)
+
+npx prisma migrate dev -n <nombre> (si Prisma es la fuente de verdad)
+
+npx prisma generate (regenerar cliente)
