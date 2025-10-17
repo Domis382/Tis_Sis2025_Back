@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model administrador {
+  id_administrador    BigInt               @id @default(autoincrement())
+  nombre_admin        String               @db.VarChar(100)
+  apellido_admin      String               @db.VarChar(100)
+  correo_admin        String               @unique @db.VarChar(150)
+  estado              estado_admin_t       @default(ACTIVO)
+  fecha_registro      DateTime             @default(now()) @db.Timestamp(6)
+  id_area             BigInt?
+  id_coordinador      BigInt?
+  id_parametro        BigInt?
+  id_listas           BigInt?
+  id_auditoria        BigInt?
+  area                area?                @relation(fields: [id_area], references: [id_area])
+  coordinador_area    coordinador_area?    @relation(fields: [id_coordinador], references: [id_coordinador])
+  listas_publicadas   listas_publicadas?   @relation(fields: [id_listas], references: [id_listas])
+  parametro_medallero parametro_medallero? @relation(fields: [id_parametro], references: [id_parametro])
+  auditoria           auditoria?           @relation(fields: [id_auditoria], references: [id_auditoria], map: "fk_admin_auditoria")
+}
+
+model area {
+  id_area             BigInt               @id @default(autoincrement())
+  nombre_area         String               @unique @db.VarChar(100)
+  administrador       administrador[]
+  coordinador_area    coordinador_area[]
+  evaluador           evaluador[]
+  inscritos           inscritos[]
+  listas_publicadas   listas_publicadas[]
+  parametro_medallero parametro_medallero?
+  responsable_area    responsable_area[]
+}
+
+model auditoria {
+  id_auditoria          BigInt            @id @default(autoincrement())
+  fecha_hora            DateTime          @default(now()) @db.Timestamp(6)
+  actor_tipo            actor_tipo_t
+  id_actor              BigInt?
+  actor_nombre_snapshot String?           @db.VarChar(200)
+  accion                String            @db.VarChar(100)
+  entidad               String            @db.VarChar(100)
+  id_entidad            BigInt?
+  valor_anterior        String?
+  valor_nuevo           String?
+  resultado             resultado_audit_t @default(OK)
+  motivo_error          String?
+  administrador         administrador[]
+
+  @@index([actor_tipo, id_actor], map: "ix_auditoria_actor")
+  @@index([entidad, id_entidad], map: "ix_auditoria_entidad")
+  @@index([fecha_hora], map: "ix_auditoria_fecha")
+}
+
+model clasificados {
+  id_clasificado BigInt               @id @default(autoincrement())
+  id_inscrito    BigInt
+  id_fase        BigInt
+  estado         estado_clasificado_t
+  fases          fases                @relation(fields: [id_fase], references: [id_fases])
+  inscritos      inscritos            @relation(fields: [id_inscrito], references: [id_inscritos], onDelete: Cascade)
+
+  @@unique([id_inscrito, id_fase], map: "uq_clasif_unica")
+  @@index([id_fase], map: "ix_clasif_fase")
+}
+
+model coordinador_area {
+  id_coordinador        BigInt          @id @default(autoincrement())
+  nombre_coordinador    String          @db.VarChar(100)
+  apellidos_coordinador String          @db.VarChar(100)
+  id_area               BigInt
+  administrador         administrador[]
+  area                  area            @relation(fields: [id_area], references: [id_area])
+  importaciones         importaciones[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model evaluaciones {
+  id_evaluacion BigInt    @id @default(autoincrement())
+  id_inscrito   BigInt
+  id_evaluador  BigInt
+  id_fase       BigInt
+  nota          Decimal?  @db.Decimal(6, 2)
+  observacion   String?
+  fecha         DateTime  @default(now()) @db.Timestamp(6)
+  evaluador     evaluador @relation(fields: [id_evaluador], references: [id_evaluador])
+  fases         fases     @relation(fields: [id_fase], references: [id_fases])
+  inscritos     inscritos @relation(fields: [id_inscrito], references: [id_inscritos], onDelete: Cascade)
+
+  @@unique([id_inscrito, id_evaluador, id_fase], map: "uq_eval_unica")
+  @@index([id_evaluador], map: "ix_eval_evaluador")
+  @@index([id_inscrito, id_fase], map: "ix_eval_inscrito_fase")
+}
+
+model evaluador {
+  id_evaluador        BigInt         @id @default(autoincrement())
+  nombre_evaluado     String         @db.VarChar(100)
+  apellidos_evaluador String         @db.VarChar(100)
+  id_area             BigInt
+  evaluaciones        evaluaciones[]
+  area                area           @relation(fields: [id_area], references: [id_area])
+}
+
+model fases {
+  id_fases          BigInt              @id @default(autoincrement())
+  nombre_fase       String              @unique @db.VarChar(50)
+  descripcion       String?             @db.VarChar(255)
+  clasificados      clasificados[]
+  evaluaciones      evaluaciones[]
+  listas_publicadas listas_publicadas[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model importaciones {
+  id_import        BigInt           @id @default(autoincrement())
+  id_coordinador   BigInt
+  fecha_hora       DateTime         @default(now()) @db.Timestamp(6)
+  nombre_archivo   String           @db.VarChar(255)
+  total_registro   Int              @default(0)
+  total_ok         Int              @default(0)
+  total_error      Int              @default(0)
+  detalle_errores  String?
+  coordinador_area coordinador_area @relation(fields: [id_coordinador], references: [id_coordinador])
+
+  @@index([id_coordinador, fecha_hora], map: "ix_import_coord_fecha")
+}
+
+model inscritos {
+  id_inscritos       BigInt               @id @default(autoincrement())
+  nombres_inscrito   String               @db.VarChar(100)
+  apellidos_inscrito String               @db.VarChar(100)
+  ci_inscrito        String?              @db.VarChar(40)
+  id_nivel           BigInt
+  id_area            BigInt
+  estado             estado_inscripcion_t @default(ACTIVA)
+  clasificados       clasificados[]
+  evaluaciones       evaluaciones[]
+  area               area                 @relation(fields: [id_area], references: [id_area])
+  nivel              nivel                @relation(fields: [id_nivel], references: [id_nivel])
+
+  @@index([id_area, id_nivel], map: "ix_inscritos_area_nivel")
+}
+
+model listas_publicadas {
+  id_listas     BigInt          @id @default(autoincrement())
+  id_fase       BigInt
+  id_area       BigInt
+  tipolista     tipo_lista_t
+  fecha_publica DateTime        @default(now()) @db.Timestamp(6)
+  administrador administrador[]
+  area          area            @relation(fields: [id_area], references: [id_area])
+  fases         fases           @relation(fields: [id_fase], references: [id_fases])
+
+  @@index([id_area, id_fase], map: "ix_listas_area_fase")
+}
+
+model nivel {
+  id_nivel     BigInt      @id @default(autoincrement())
+  nombre_nivel String      @unique @db.VarChar(100)
+  inscritos    inscritos[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model parametro_medallero {
+  id_parametro     BigInt          @id @default(autoincrement())
+  id_area          BigInt          @unique
+  cantidad_oros    Int             @default(1)
+  cantidad_platas  Int             @default(1)
+  cantidad_bronces Int             @default(1)
+  menciones        Int             @default(0)
+  administrador    administrador[]
+  area             area            @relation(fields: [id_area], references: [id_area])
+}
+
+model responsable_area {
+  id_responsable      BigInt @id @default(autoincrement())
+  nombres_evaluador   String @db.VarChar(100)
+  apellidos           String @db.VarChar(100)
+  correo_electronico  String @unique @db.VarChar(150)
+  usuario_responsable String @unique @db.VarChar(60)
+  pass_responsable    String @db.VarChar(200)
+  id_area             BigInt
+  area                area   @relation(fields: [id_area], references: [id_area])
+}
+
+enum actor_tipo_t {
+  ADMINISTRADOR
+  COORDINADOR
+  RESPONSABLE_AREA
+  EVALUADOR
+  SISTEMA
+}
+
+enum estado_admin_t {
+  ACTIVO
+  INACTIVO
+}
+
+enum estado_clasificado_t {
+  CLASIFICADO
+  NO_CLASIFICADO
+  DESCLASIFICADO
+}
+
+enum estado_inscripcion_t {
+  ACTIVA
+  DESCLASIFICADA
+}
+
+enum resultado_audit_t {
+  OK
+  ERROR
+}
+
+enum tipo_lista_t {
+  CERTIFICADOS
+  CEREMONIA
+  PUBLICACION
+}
