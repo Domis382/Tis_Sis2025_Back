@@ -13,7 +13,7 @@ export default router;*/
 
 
 import { Router } from 'express';
-import * as repo from '../repositories/responsables.repository.js';
+import * as repo from '../repositories/responsable.repository.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
 const router = Router();

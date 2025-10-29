@@ -127,6 +127,7 @@ model importaciones {
   total_error      Int              @default(0)
   detalle_errores  String?
   coordinador_area coordinador_area @relation(fields: [id_coordinador], references: [id_coordinador])
+  inscritos        inscritos[]
 
   @@index([id_coordinador, fecha_hora], map: "ix_import_coord_fecha")
 }
@@ -139,9 +140,11 @@ model inscritos {
   id_nivel           BigInt
   id_area            BigInt
   estado             estado_inscripcion_t @default(ACTIVA)
+  id_import          BigInt?
   clasificados       clasificados[]
   evaluaciones       evaluaciones[]
   area               area                 @relation(fields: [id_area], references: [id_area])
+  importaciones      importaciones?       @relation(fields: [id_import], references: [id_import])
   nivel              nivel                @relation(fields: [id_nivel], references: [id_nivel])
 
   @@index([id_area, id_nivel], map: "ix_inscritos_area_nivel")
