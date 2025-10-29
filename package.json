@@ -1,7 +1,7 @@
 {
   "name": "back",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend OhSanSi (Express + Prisma o LowDB)",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
@@ -16,9 +16,11 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "prisma": "^6.16.3"
+    "prisma": "^6.16.3",
+    "lowdb": "^7.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.3"
   }
 }
+
