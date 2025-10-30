@@ -1,28 +1,31 @@
-// src/server.js
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import routes from './routes/index.js';
 import { errorHandler } from './middlewares/errorHandler.js';
-import { initDB } from './config/db.js'; // 👈 añadida, para mi BD simulada
+// import { initDB } from './config/db.js'; // LowDB (no usar para responsables)
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
 app.use(express.json());
 
-// Inicializamos la base de datos simulada
-await initDB(); // 👈 añadida para mi BD simulada
+// await initDB(); // ← si usas LowDB para otras cosas, pero NO para responsables
 
-// Rutas principales
 app.use('/api', routes);
+app.get('/', (_, res) => res.send('API OK'));
 
-// Middleware de errores
 app.use(errorHandler);
+
+// Convierte todos los BigInt a Number al serializar JSON
+app.set('json replacer', (key, value) =>
+  typeof value === 'bigint' ? Number(value) : value
+);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
+
 

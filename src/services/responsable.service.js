@@ -1,55 +1,71 @@
-//agrege esto para tablas de admin
-import * as responsableRepo from '../repositories/responsable.repository.js';
+// src/services/responsable.service.js
+import * as repo from '../repositories/responsable.repository.js';
 
+// Si necesitas validaciones adicionales, hazlas aquí.
 export async function getAllResponsables() {
-  const rows = await responsableRepo.findAllResponsables();
-
-  // Mapear datos DB → formato que usa tu tabla en el front
-  return rows.map(r => ({
-    id: r.id_responsable,
-    nombres: r.nombres_evaluador,
-    apellidos: r.apellidos,
-    rol: "RESPONSABLE",
-    area: r.area?.nombre_area ?? "",
-    correo: r.correo_electronico,
-    // campos que el front espera aunque no estén en DB aún
-    estado: true,
-    telefono: "",
-    nombreUsuario: r.usuario_responsable,
-  }));
+  return repo.listResponsables();
 }
 
-export async function createResponsable(data) {
-  const created = await responsableRepo.createResponsable(data);
-  return {
-    id: created.id_responsable,
-    nombres: created.nombres_evaluador,
-    apellidos: created.apellidos,
-    rol: "RESPONSABLE",
-    area: created.area?.nombre_area ?? "",
-    correo: created.correo_electronico,
-    estado: true,
-    telefono: "",
-    nombreUsuario: created.usuario_responsable,
-  };
+export async function createResponsable(payload) {
+  const {
+    nombres_evaluador,
+    apellidos,
+    correo_electronico,
+    usuario_responsable,
+    pass_responsable,
+    id_area,
+  } = payload;
+
+  if (
+    !nombres_evaluador ||
+    !apellidos ||
+    !correo_electronico ||
+    !usuario_responsable ||
+    !pass_responsable ||
+    !id_area
+  ) {
+    const err = new Error('Faltan campos obligatorios');
+    err.status = 400;
+    throw err;
+  }
+
+  try {
+    return await repo.createResponsable({
+      nombres_evaluador,
+      apellidos,
+      correo_electronico,
+      usuario_responsable,
+      pass_responsable,
+      id_area,
+    });
+  } catch (e) {
+    // Prisma unique constraint (correo/usuario)
+    if (e.code === 'P2002') {
+      const err = new Error(`Registro duplicado: ${e.meta?.target?.join(', ')}`);
+      err.status = 409;
+      throw err;
+    }
+    throw e;
+  }
 }
 
-export async function updateResponsable(id, data) {
-  const updated = await responsableRepo.updateResponsable(id, data);
-  return {
-    id: updated.id_responsable,
-    nombres: updated.nombres_evaluador,
-    apellidos: updated.apellidos,
-    rol: "RESPONSABLE",
-    area: updated.area?.nombre_area ?? "",
-    correo: updated.correo_electronico,
-    estado: true,
-    telefono: "",
-    nombreUsuario: updated.usuario_responsable,
-  };
+export async function updateResponsable(id, payload) {
+  // id en tu modelo es BigInt (id_responsable). Prisma acepta Number o BigInt.
+  const numId = Number(id);
+  if (!numId) {
+    const err = new Error('ID inválido');
+    err.status = 400;
+    throw err;
+  }
+  return repo.updateResponsable(numId, payload);
 }
 
 export async function deleteResponsable(id) {
-  await responsableRepo.deleteResponsable(id);
-  return { message: "Responsable eliminado" };
+  const numId = Number(id);
+  if (!numId) {
+    const err = new Error('ID inválido');
+    err.status = 400;
+    throw err;
+  }
+  return repo.deleteResponsable(numId);
 }
