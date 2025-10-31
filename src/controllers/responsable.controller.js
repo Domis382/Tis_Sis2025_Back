@@ -13,8 +13,9 @@ export async function getAll(req, res, next) {
 
 export async function create(req, res, next) {
   try {
-    const data = await responsableService.createResponsable(req.body);
-    successResponse(res, data, 201);
+    const creado = await responsableService.createResponsable(req.body);
+    const { pass_responsable, ...safe } = creado; // oculto pass en response
+    successResponse(res, safe, 201);
   } catch (err) {
     next(err);
   }
