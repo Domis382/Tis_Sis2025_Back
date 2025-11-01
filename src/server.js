@@ -12,6 +12,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// BigInt → string para JSON
+app.set('json replacer', (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
+
 // Rutas principales
 app.use('/api', routes);
 
