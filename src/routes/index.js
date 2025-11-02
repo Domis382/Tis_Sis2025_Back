@@ -1,15 +1,13 @@
-// Centraliza todas las rutas.
-
-import { Router } from 'express';
+import express from 'express';
+import authRoutes from './auth.routes.js';
 import areaRoutes from './area.routes.js';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 
-const router = Router();
+const router = express.Router();
 
-router.use('/areas', areaRoutes);
+router.use(authRoutes);            // /api/auth/...
+router.use('/areas', authMiddleware(['Administrador','Coordinador']), areaRoutes); // ejemplo protegido
 
-// Ruta base
-router.get('/', (req, res) => {
-  res.json({ message: 'API Oh! SanSi Backend funcionando ✅' });
-});
+router.get('/health', (req, res) => res.json({ ok: true, status: 'UP' }));
 
 export default router;
