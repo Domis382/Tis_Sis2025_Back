@@ -18,6 +18,12 @@ app.use('/api', routes);
 // Middleware de errores (último)
 app.use(errorHandler);
 
+//Fix error BigInt to String
+app.set('json replacer', (key, value) =>
+  typeof value === 'bigint' ? value.toString() : value
+);
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
