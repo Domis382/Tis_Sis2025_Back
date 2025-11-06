@@ -1,19 +1,62 @@
+//import.service,js
 import prisma from "../config/prisma.js";
 import { parseCsvBuffer } from "../utils/csv.js";
 import { parseXlsxBuffer } from "../utils/xlsx.js";
 import { buildErrorCsv } from "../utils/errorReport.js";
 
+/** ======= Normalización / utilidades ======= **/
+
+// Canon: lo que la BD espera
 const REQUIRED_HEADERS = [
   "nombres_inscrito",
   "apellidos_inscrito",
   "ci_inscrito",
   "area",
   "nivel",
-  "estado",
 ];
 
-const normalize = (headers) => headers.map((h) => String(h).trim());
+// claves equivalentes que suelen venir en los archivos (insensible a acentos/mayús.)
+const HEADER_ALIASES = {
+  nombres_inscrito: ["nombres", "nombre", "nombres_inscrito"],
+  apellidos_inscrito: ["apellidos", "apellido", "apellidos_inscrito"],
+  ci_inscrito: ["ci", "dni", "cedula", "carnet", "ci_inscrito"],
+  area: ["area", "área"],
+  nivel: ["nivel", "grado", "grado_escolaridad", "grado_escolaridad"],
+  estado: ["estado"],
+  colegio: ["colegio"],
+  contacto_tutor: ["contacto_tutor", "telefono_tutor", "cel_tutor"],
+  unidad_educativa: ["unidad_educativa", "ue", "unidadeducativa"],
+  departamento: ["departamento", "dpto"],
+  grado_escolaridad: ["grado_escolaridad", "grado", "nivel_academico"],
+  tutor_academico: ["tutor_academico", "tutor_académico", "docente_tutor"],
+};
 
+const toKey = (s) =>
+  String(s)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "") // quita tildes
+    .replace(/\s+/g, "_") // espacios -> _
+    .replace(/[^\w]/g, "_"); // otros símbolos -> _
+
+// ¿en headers hay alguna variante de la clave canónica?
+function hasHeader(headers, canonical) {
+  const norm = headers.map(toKey);
+  const candidates = (HEADER_ALIASES[canonical] ?? [canonical]).map(toKey);
+  return candidates.some((c) => norm.includes(c));
+}
+
+// extrae del row usando aliases
+function getFromRow(row, canonical) {
+  const candidates = (HEADER_ALIASES[canonical] ?? [canonical]).map(toKey);
+  for (const k of Object.keys(row)) {
+    if (candidates.includes(toKey(k))) return row[k];
+  }
+  return undefined;
+}
+
+/** ======= Validación por fila ======= **/
 function validateRow(row) {
   const errs = [];
   for (const h of ["nombres_inscrito", "apellidos_inscrito", "area", "nivel"]) {
@@ -23,11 +66,13 @@ function validateRow(row) {
   if (
     row.estado &&
     !["ACTIVA", "DESCLASIFICADA"].includes(String(row.estado).toUpperCase())
-  )
+  ) {
     errs.push("estado inválido (use ACTIVA o DESCLASIFICADA)");
+  }
   return errs;
 }
 
+/** ======= Helpers de dominio ======= **/
 async function ensureArea(nombre) {
   const n = String(nombre).trim();
   const hit = await prisma.area.findUnique({ where: { nombre_area: n } });
@@ -51,6 +96,7 @@ async function findDuplicate(ci) {
   });
 }
 
+/** ======= Soporte CSV / XLSX ======= **/
 async function parseFile(file) {
   const isXlsx =
     file.mimetype?.includes("sheet") || file.originalname.endsWith(".xlsx");
@@ -58,24 +104,37 @@ async function parseFile(file) {
     const { rows, headers } = await parseXlsxBuffer(file.buffer);
     return { rows, headers };
   }
-  // CSV
   return parseCsvBuffer(file.buffer);
 }
 
+/** ======= API pública del servicio ======= **/
 export async function previewFile(file) {
   const { rows, headers } = await parseFile(file);
-  const norm = normalize(headers);
-  const missing = REQUIRED_HEADERS.filter((h) => !norm.includes(h));
+
+  // valida encabezados de forma robusta
+  const missing = REQUIRED_HEADERS.filter((h) => !hasHeader(headers, h));
   if (missing.length)
     throw new Error(`Encabezados faltantes: ${missing.join(", ")}`);
 
   const preview = [];
   const errores = [];
+
   for (let i = 0; i < rows.length; i++) {
-    const r = {};
-    // tolera mayúsc/minúsc en headers
-    for (const h of REQUIRED_HEADERS)
-      r[h] = rows[i][h] ?? rows[i][h.toLowerCase()];
+    const r = {
+      nombres_inscrito: getFromRow(rows[i], "nombres_inscrito"),
+      apellidos_inscrito: getFromRow(rows[i], "apellidos_inscrito"),
+      ci_inscrito: getFromRow(rows[i], "ci_inscrito"),
+      area: getFromRow(rows[i], "area"),
+      nivel: getFromRow(rows[i], "nivel"),
+      estado: getFromRow(rows[i], "estado") ?? "ACTIVA",
+      colegio: getFromRow(rows[i], "colegio"),
+      contacto_tutor: getFromRow(rows[i], "contacto_tutor"),
+      unidad_educativa: getFromRow(rows[i], "unidad_educativa"),
+      departamento: getFromRow(rows[i], "departamento"),
+      grado_escolaridad: getFromRow(rows[i], "grado_escolaridad"),
+      tutor_academico: getFromRow(rows[i], "tutor_academico"),
+    };
+
     const rowErrs = validateRow(r);
     if (rowErrs.length)
       errores.push({ fila: i + 2, errores: rowErrs.join(" | ") });
@@ -92,15 +151,18 @@ export async function runImport({
   duplicatePolicy,
 }) {
   const { rows, headers } = await parseFile(file);
-  const norm = normalize(headers);
-  const missing = REQUIRED_HEADERS.filter((h) => !norm.includes(h));
+
+  const missing = REQUIRED_HEADERS.filter((h) => !hasHeader(headers, h));
   if (missing.length)
     throw new Error(`Encabezados faltantes: ${missing.join(", ")}`);
 
-  // crear registro import
+  if (!coordinatorId || Number.isNaN(Number(coordinatorId))) {
+    throw new Error("Falta id_coordinador (auth stub/login)");
+  }
+
   const imp = await prisma.importaciones.create({
     data: {
-      id_coordinador: coordinatorId,
+      id_coordinador: Number(coordinatorId),
       nombre_archivo: fileName,
       total_registro: 0,
       total_ok: 0,
@@ -113,11 +175,23 @@ export async function runImport({
 
   for (let i = 0; i < rows.length; i++) {
     const filaNum = i + 2;
-    const src = rows[i];
-    const r = {};
-    for (const h of REQUIRED_HEADERS) r[h] = src[h] ?? src[h.toLowerCase()];
-    const rowErrs = validateRow(r);
+    // mapear robusto
+    const r = {
+      nombres_inscrito: getFromRow(rows[i], "nombres_inscrito"),
+      apellidos_inscrito: getFromRow(rows[i], "apellidos_inscrito"),
+      ci_inscrito: getFromRow(rows[i], "ci_inscrito"),
+      area: getFromRow(rows[i], "area"),
+      nivel: getFromRow(rows[i], "nivel"),
+      estado: getFromRow(rows[i], "estado") ?? "ACTIVA",
+      colegio: getFromRow(rows[i], "colegio"),
+      contacto_tutor: getFromRow(rows[i], "contacto_tutor"),
+      unidad_educativa: getFromRow(rows[i], "unidad_educativa"),
+      departamento: getFromRow(rows[i], "departamento"),
+      grado_escolaridad: getFromRow(rows[i], "grado_escolaridad"),
+      tutor_academico: getFromRow(rows[i], "tutor_academico"),
+    };
 
+    const rowErrs = validateRow(r);
     if (rowErrs.length && onlyValid) {
       errores.push({ fila: filaNum, error: rowErrs.join(" | ") });
       continue;
@@ -126,7 +200,7 @@ export async function runImport({
     try {
       const id_area = await ensureArea(r.area);
       const id_nivel = await ensureNivel(r.nivel);
-      const estado = r.estado ? String(r.estado).toUpperCase() : "ACTIVA";
+      const estado = String(r.estado || "ACTIVA").toUpperCase();
 
       const dup = await findDuplicate(r.ci_inscrito);
       if (dup) {
@@ -146,12 +220,18 @@ export async function runImport({
               id_area,
               id_nivel,
               estado,
+              colegio: r.colegio ?? dup.colegio,
+              contacto_tutor: r.contacto_tutor ?? dup.contacto_tutor,
+              unidad_educativa: r.unidad_educativa ?? dup.unidad_educativa,
+              departamento: r.departamento ?? dup.departamento,
+              grado_escolaridad: r.grado_escolaridad ?? dup.grado_escolaridad,
+              tutor_academico: r.tutor_academico ?? dup.tutor_academico,
             },
           });
           ok++;
           continue;
         }
-        // 'duplicate' -> crea nuevo registro con mismo CI
+        // "duplicate": crea otro registro con mismo CI
       }
 
       await prisma.inscritos.create({
@@ -162,7 +242,13 @@ export async function runImport({
           id_area,
           id_nivel,
           estado,
-          id_import: imp.id_import, // útil para rollback futuro
+          colegio: r.colegio ?? null,
+          contacto_tutor: r.contacto_tutor ?? null,
+          unidad_educativa: r.unidad_educativa ?? null,
+          departamento: r.departamento ?? null,
+          grado_escolaridad: r.grado_escolaridad ?? null,
+          tutor_academico: r.tutor_academico ?? null,
+          id_import: imp.id_import,
         },
       });
       ok++;
