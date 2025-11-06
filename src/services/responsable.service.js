@@ -27,14 +27,14 @@ async function generarUsuarioUnico(nombres, apellidos) {
     i++;
   }
 }
-
+// Get all responsables
 export async function getAllResponsables() {
   return prisma.responsable_area.findMany({
     include: { area: true },
     orderBy: { id_responsable: 'asc' },
   });
 }
-
+// Create responsable
 export async function createResponsable(body) {
   const { nombres_evaluador, apellidos, correo_electronico, id_area, carnet } = body;
 
@@ -74,7 +74,7 @@ export async function createResponsable(body) {
 
   return creado;
 }
-
+// Update responsable
 export async function updateResponsable(id, patch) {
   return prisma.responsable_area.update({
     where: { id_responsable: BigInt(id) },
