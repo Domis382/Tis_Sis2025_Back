@@ -2,10 +2,12 @@
 
 import { Router } from 'express';
 import areaRoutes from './area.routes.js';
+import evaluacionRoutes from "./evaluaciones.routes.js";
 
 const router = Router();
 
 router.use('/areas', areaRoutes);
+router.use("/evaluaciones", evaluacionRoutes);
 
 // Ruta base
 router.get('/', (req, res) => {
