@@ -141,15 +141,12 @@ model inscritos {
   id_area            BigInt
   estado             estado_inscripcion_t @default(ACTIVA)
   id_import          BigInt?
-<<<<<<< HEAD
   colegio            String?              @db.VarChar(150)
   contacto_tutor     String?              @db.VarChar(50)
   unidad_educativa   String?              @db.VarChar(150)
   departamento       String?              @db.VarChar(50)
   grado_escolaridad  String?              @db.VarChar(50)
   tutor_academico    String?              @db.VarChar(150)
-=======
->>>>>>> origin/feature/back-autenticacion-admin
   clasificados       clasificados[]
   evaluaciones       evaluaciones[]
   area               area                 @relation(fields: [id_area], references: [id_area])

@@ -1,21 +1,16 @@
 import express from 'express';
 import authRoutes from './auth.routes.js';
 import areaRoutes from './area.routes.js';
-<<<<<<< HEAD
 import evaluacionRoutes from "./evaluaciones.routes.js";
-=======
 import responsableRoutes from "./responsable.routes.js";
 import evaluadorRoutes from "./evaluador.routes.js";
->>>>>>> origin/feature/back-autenticacion-admin
 
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
-<<<<<<< HEAD
+const router = express.Router();
 router.use('/areas', areaRoutes);
 router.use("/evaluaciones", evaluacionRoutes);
-=======
-const router = express.Router();
->>>>>>> origin/feature/back-autenticacion-admin
+
 
 // RUTAS UNIFICADAS
 router.use(authRoutes); // rutas de autenticación
