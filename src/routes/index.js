@@ -11,13 +11,20 @@ const router = express.Router();
 router.use('/areas', areaRoutes);
 router.use("/evaluaciones", evaluacionRoutes);
 
-
+router.use(authRoutes);            // /api/auth/...
 // RUTAS UNIFICADAS
 router.use(authRoutes); // rutas de autenticación
 
 // Áreas protegidas con middleware (de autenticación)
 router.use('/areas', authMiddleware(['Administrador', 'Coordinador']), areaRoutes);
 
+router.get('/profile', authMiddleware(['Responsable de Area', 'Administrador', 'Coordinador']), (req, res) => {
+  res.json({
+    ok: true,
+    message: '¡Acceso permitido a ruta protegida!',
+    user: req.user
+  });
+});
 // Rutas que no requieren autenticación
 router.use('/responsables', responsableRoutes);
 router.use('/evaluadores', evaluadorRoutes);

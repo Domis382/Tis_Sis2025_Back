@@ -1,3 +1,5 @@
+//Punto de entrada del backend (Express configurado).server 
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -8,31 +10,24 @@ import { authMiddleware } from './middlewares/authMiddleware.js';
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
-// await initDB(); // ← si usas LowDB para otras cosas, pero NO para responsables
-
+// Rutas principales
 app.use('/api', routes);
-app.get('/', (_, res) => res.send('API OK'));
 
 
-// Convierte todos los BigInt a Number al serializar JSON
-app.set('json replacer', (key, value) =>
-  typeof value === 'bigint' ? Number(value) : value
-);
-
+// Middleware de errores (último)
 app.use(errorHandler);
 
-//Fix error BigInt to String
-app.set('json replacer', (key, value) =>
-  typeof value === 'bigint' ? value.toString() : value
-);
 
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
-
-

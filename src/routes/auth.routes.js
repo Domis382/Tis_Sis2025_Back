@@ -1,9 +1,9 @@
-import express from 'express';
-import { login  } from '../controllers/auth.controller.js';
+// src/routes/auth.routes.js
+import { Router } from 'express';
+import { login } from '../controllers/auth.controller.js';
 
-const router = express.Router();
-
+const router = Router();
+// quedará como POST /api/auth/login por el index.js
 router.post('/auth/login', login);
-//router.get('/auth/me', me); // opcional: validar token y devolver usuario
 
 export default router;
