@@ -1,26 +1,18 @@
-//agrege esto para admin
-/*import { Router } from 'express';
-import * as responsableController from '../controllers/responsable.controller.js';
-
-const router = Router();
-
-router.get('/', responsableController.getAll);
-router.post('/', responsableController.create);
-router.put('/:id', responsableController.update);
-router.delete('/:id', responsableController.remove);
-
-export default router;*/
-
+//Importa el Router de Express, que se usa para definir rutas específicas de este módulo.
 import { Router } from 'express';
 import * as ctrl from '../controllers/responsable.controller.js';
 
 const router = Router();
 
-// Ahora todo pasa por el controller (que a su vez usa el service y el repo Prisma)
+// GET /api/responsables
 router.get('/', ctrl.getAll);
+// POST /api/responsables
 router.post('/', ctrl.create);
+// PUT /api/responsables/:id
 router.put('/:id', ctrl.update);
+// DELETE /api/responsables/:id
 router.delete('/:id', ctrl.remove);
+// Endpoint de prueba para verificar que las rutas del módulo funcionan.
 router.get('/_ping', (req, res) => res.json({ ok: true }));
 
 export default router;

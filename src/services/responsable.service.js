@@ -1,18 +1,25 @@
 // src/services/responsable.service.js
+//Importa el cliente de Prisma
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-// util: normaliza (quita tildes/espacios) y mayúsculas
+// Función "norm":
+// - Elimina tildes (á, é, í...)
+// - Quita espacios
+// - Convierte todo a MAYÚSCULAS
+// Se usa para generar nombres de usuario sin caracteres especiales.
 const norm = (s) =>
   s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toUpperCase();
 
 async function generarUsuarioUnico(nombres, apellidos) {
-  const base = `${norm(nombres)[0]}${norm(apellidos)}`; // M + PEREZ -> MPEREZ
-  // ¿existe exacto?
+  // Crea una base de usuario combinando la inicial del nombre y el apellido (ej: M + PEREZ -> MPEREZ)
+  const base = `${norm(nombres)[0]}${norm(apellidos)}`; 
+  // Verifica si ya existe un usuario con ese nombre exacto en la tabla
   const ya = await prisma.responsable_area.findUnique({
     where: { usuario_responsable: base },
     select: { usuario_responsable: true },
   });
+  // Si no existe, devuelve directamente el nombre base
   if (!ya) return base;
 
   // si existe, busca sufijos MPEREZ2, MPEREZ3...
@@ -27,24 +34,26 @@ async function generarUsuarioUnico(nombres, apellidos) {
     i++;
   }
 }
-// Get all responsables
+// Busca todos los registros en la tabla "responsable_area"
 export async function getAllResponsables() {
   return prisma.responsable_area.findMany({
     include: { area: true },
     orderBy: { id_responsable: 'asc' },
   });
 }
-// Create responsable
+// Extrae los campos esperados del body recibido
 export async function createResponsable(body) {
   const { nombres_evaluador, apellidos, correo_electronico, id_area, carnet } = body;
 
+  // Valida que todos los campos requeridos estén presentes
   if (!nombres_evaluador || !apellidos || !correo_electronico || !id_area || !carnet) {
     const e = new Error('Campos requeridos: nombres_evaluador, apellidos, correo_electronico, id_area, carnet');
     e.status = 400; throw e;
   }
 
-  // FK de área
+  // Convierte el ID del área a BigInt
   const areaId = BigInt(id_area);
+  // Verifica que el área exista antes de crear el responsable
   const area = await prisma.area.findUnique({ where: { id_area: areaId } });
   if (!area) { const e = new Error('id_area no existe'); e.status = 400; throw e; }
 
@@ -58,9 +67,10 @@ export async function createResponsable(body) {
   // genera usuario único
   const usuario_responsable = await generarUsuarioUnico(nombres_evaluador, apellidos);
 
-  // contraseña inicial = carnet (plain por ahora)
+  // contraseña inicial = carnet (por ahora)
   const pass_responsable = String(carnet);
 
+  // Crea el registro en la base de datos
   const creado = await prisma.responsable_area.create({
     data: {
       nombres_evaluador,
@@ -74,14 +84,14 @@ export async function createResponsable(body) {
 
   return creado;
 }
-// Update responsable
+// Actualiza los datos del responsable según su ID
 export async function updateResponsable(id, patch) {
   return prisma.responsable_area.update({
     where: { id_responsable: BigInt(id) },
     data: patch,
   });
 }
-
+// Elimina un responsable según su ID
 export async function deleteResponsable(id) {
   await prisma.responsable_area.delete({ where: { id_responsable: BigInt(id) } });
   return true;
