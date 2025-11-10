@@ -1,28 +1,18 @@
-//  MIDDLEWARE DE AUTORIZACIÓN: Control de acceso por roles
-// src/middlewares/auth.js
+import jwt from 'jsonwebtoken';
+//middleware para requerir rol espeficico y validar token
+export const authMiddleware = (roles = []) => (req, res, next) => {
+  const raw = req.headers.authorization || '';
+  const token = raw.startsWith('Bearer ') ? raw.slice(7) : null;
+  if (!token) return res.status(401).json({ ok: false, error: 'Token requerido' });
 
-//  MIDDLEWARE PARA REQUERIR ROL ESPECÍFICO
-export function requireRole(roleNeeded) {
-  return (req, res, next) => {
-    //  MODO DESARROLLO/STUB: Usar variables de entorno para simular usuario
-    const role = process.env.STUB_ROLE || 'COORDINADOR'; // Rol simulado por defecto
-    const coordId = Number(process.env.STUB_COORDINADOR_ID || '1'); //  ID simulado por defecto
-
-    //  SIMULAR USUARIO AUTENTICADO (PARA PRUEBAS)
-    req.user = { 
-      rol: role, 
-      id_coordinador: coordId 
-    };
-
-    //  VALIDACIÓN DE AUTORIZACIÓN
-    if (!req.user || req.user.rol !== roleNeeded) {
-      return res.status(403).json({ 
-        ok: false, 
-        message: 'No autorizado' 
-      });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (roles.length && !roles.includes(decoded.role)) {
+      return res.status(403).json({ ok: false, error: 'Acceso denegado por rol' });
     }
-    
-    // CONTINUAR AL SIGUIENTE MIDDLEWARE/CONTROLADOR
+    req.user = decoded;
     next();
-  };
-}
+  } catch {
+    return res.status(401).json({ ok: false, error: 'Token inválido o expirado' });
+  }
+};

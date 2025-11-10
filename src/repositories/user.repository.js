@@ -1,4 +1,4 @@
-// 🔹 REPOSITORIO DE USUARIOS: Acceso a datos de autenticación
+// REPOSITORIO DE USUARIOS: Acceso a datos de autenticación
 // src/repositories/user.repository.js
 
 import { PrismaClient } from '@prisma/client';
@@ -11,7 +11,7 @@ export async function findAuthByRole({ role, username }) {
   switch (role) {
     
     case 'Responsable de Area':
-      // 🔹 BUSCAR RESPONSABLE DE ÁREA por nombre de usuario
+      //  BUSCAR RESPONSABLE DE ÁREA por nombre de usuario
       return prisma.responsable_area.findUnique({
         where: { 
           usuario_responsable: username //  Campo único: usuario_responsable
@@ -28,7 +28,7 @@ export async function findAuthByRole({ role, username }) {
       });
 
     case 'Administrador':
-      // 🔹 BUSCAR ADMINISTRADOR por email
+      //  BUSCAR ADMINISTRADOR por email
       return prisma.administrador.findUnique({
         where: { 
           correo_admin: username //  Usar email como identificador
