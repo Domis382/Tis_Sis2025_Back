@@ -1,82 +1,91 @@
-// REPOSITORIO DE USUARIOS: Acceso a datos de autenticación
 // src/repositories/user.repository.js
 
+// Importamos el cliente de Prisma (ORM para interactuar con la base de datos)
 import { PrismaClient } from '@prisma/client';
 
-//  CLIENTE PRISMA: Conexión a la base de datos
+// Creamos una instancia única del cliente para realizar consultas
 const prisma = new PrismaClient();
 
-//  FUNCIÓN PRINCIPAL: Buscar usuario por rol y credenciales
+
+//  Función principal: findAuthByRole()
+// Busca un usuario en la base de datos según su rol y nombre de usuario
+
 export async function findAuthByRole({ role, username }) {
   switch (role) {
-    
+
+   
+    //  CASO 1: RESPONSABLE DE ÁREA
+ 
     case 'Responsable de Area':
-      //  BUSCAR RESPONSABLE DE ÁREA por nombre de usuario
+      // Busca en la tabla "responsable_area" usando el campo usuario_responsable
       return prisma.responsable_area.findUnique({
-        where: { 
-          usuario_responsable: username //  Campo único: usuario_responsable
-        },
+        where: { usuario_responsable: username }, // username viene del formulario
         select: {
-          id_responsable: true,        // ID único del responsable
-          usuario_responsable: true,   //  Nombre de usuario para login
-          pass_responsable: true,      //  Contraseña (texto plano temporal)
-          id_area: true,               //  Área asignada
-          nombres_evaluador: true,     //  Nombres (NOTA: posible error de nombre)
-          apellidos: true,             //  Apellidos
-          correo_electronico: true,    //  Email de contacto
+          id_responsable: true,
+          usuario_responsable: true,
+          pass_responsable: true,        // Contraseña temporal o cifrada
+          id_area: true,
+          nombres_evaluador: true,       // Nombre del responsable
+          apellidos: true,
+          correo_electronico: true,      // Para contacto
         },
       });
 
+    
+    // 🧩 CASO 2: ADMINISTRADOR
+  
     case 'Administrador':
-      //  BUSCAR ADMINISTRADOR por email
+      // Busca en la tabla "administrador" usando el correo como username
       return prisma.administrador.findUnique({
-        where: { 
-          correo_admin: username //  Usar email como identificador
-        },
+        where: { correo_admin: username }, // El campo es único
         select: {
-          id_administrador: true,      //  ID único del administrador
-          correo_admin: true,          //  Email (funciona como username)
-          nombre_admin: true,          //  Nombre del administrador
-          apellido_admin: true,        //  Apellido del administrador
-          id_area: true,               //  Área asignada (puede ser null)
-          estado: true,                //  Estado activo/inactivo
+          id_administrador: true,
+          correo_admin: true,           // Servirá como username/login
+          nombre_admin: true,           // Nombre completo del admin
+          apellido_admin: true,
+          id_area: true,
+          estado: true,                 // Estado (activo/inactivo)
         },
       });
 
+
+    //  CASO 3: COORDINADOR DE ÁREA
+   
     case 'Coordinador Area':
-      //  BUSCAR COORDINADOR por ID (TEMPORAL)
+      // En este caso se usa el id_coordinador como username temporal
+      // (puedes cambiar esto por un campo email o username en tu esquema)
       return prisma.coordinador_area.findUnique({
         where: { 
-          //  ENFOQUE TEMPORAL: Usar ID como username
-          //  PROBLEMA: Requiere que el usuario sepa su ID numérico
-          id_coordinador: BigInt(username) //  Convertir string a BigInt
+          id_coordinador: BigInt(username) // convierte el texto a BigInt
         },
         select: {
-          id_coordinador: true,        //  ID único del coordinador
-          nombre_coordinador: true,    //  Nombre del coordinador
-          apellidos_coordinador: true, //  Apellidos del coordinador
-          id_area: true,               //  Área asignada
+          id_coordinador: true,
+          nombre_coordinador: true,
+          apellidos_coordinador: true,
+          id_area: true,
         },
       });
 
+   
+    // 🧩 CASO 4: EVALUADOR
     case 'Evaluador':
-      //  BUSCAR EVALUADOR por ID (TEMPORAL)
+      // Similar al caso anterior, se usa el ID como identificador temporal
       return prisma.evaluador.findUnique({
         where: { 
-          //  ENFOQUE TEMPORAL: Usar ID como username
-          //  PROBLEMA: Requiere que el usuario sepa su ID numérico
-          id_evaluador: BigInt(username) // Convertir string a BigInt
+          id_evaluador: BigInt(username) // se convierte a BigInt porque en Prisma el ID es tipo BigInt
         },
         select: {
-          id_evaluador: true,          // ID único del evaluador
-          nombre_evaluado: true,       // Nombre (NOTA: posible error "evaluado" vs "evaluador")
-          apellidos_evaluador: true,   // Apellidos del evaluador
-          id_area: true,               //  Área asignada
+          id_evaluador: true,
+          nombre_evaluado: true,
+          apellidos_evaluador: true,
+          id_area: true,
         },
       });
 
+   //  CASO 5: ROL NO DEFINIDO
+
     default:
-      //  ROL NO RECONOCIDO
+      // Si el rol no coincide con ninguno de los anteriores, devuelve null
       return null;
   }
 }
