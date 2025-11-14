@@ -71,13 +71,21 @@ model clasificados {
 }
 
 model coordinador_area {
-  id_coordinador        BigInt          @id @default(autoincrement())
-  nombre_coordinador    String          @db.VarChar(100)
-  apellidos_coordinador String          @db.VarChar(100)
-  id_area               BigInt
-  administrador         administrador[]
-  area                  area            @relation(fields: [id_area], references: [id_area])
-  importaciones         importaciones[]
+  id_coordinador        BigInt @id @default(autoincrement())
+  nombre_coordinador    String @db.VarChar(100)
+  apellidos_coordinador String @db.VarChar(100)
+
+  // 🔽 Campos nuevos
+  correo_electronico  String? @unique
+  usuario_coordinador String? @unique
+  pass_coordinador    String?
+  carnet              String? @db.VarChar(50)
+  telefono            String? @db.VarChar(50)
+
+  id_area       BigInt
+  administrador administrador[]
+  area          area            @relation(fields: [id_area], references: [id_area])
+  importaciones importaciones[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
