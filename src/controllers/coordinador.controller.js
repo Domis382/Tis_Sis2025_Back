@@ -4,6 +4,26 @@ import * as coordinadorService from "../services/coordinador.service.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 
 // ======================================
+// GET /api/coordinador/:id
+// ======================================
+export async function getOne(req, res, next) {
+  try {
+    const { id } = req.params;
+    const data = await coordinadorService.getCoordinadorById(id);
+
+    if (!data) {
+      return successResponse(res, { message: "Coordinador no encontrado" }, 404);
+    }
+
+    // ocultar pass si viene en el objeto
+    const { pass_coordinador, ...safe } = data;
+    successResponse(res, safe);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ======================================
 // GET /api/coordinador
 // ======================================
 export async function getAll(req, res, next) {

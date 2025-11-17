@@ -3,7 +3,8 @@ const prisma = new PrismaClient();
 
 // normaliza strings: quita tildes, espacios y vuelve mayúscula
 const norm = (s) =>
-  s.normalize("NFD")
+  s
+    .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .toUpperCase();
@@ -11,7 +12,7 @@ const norm = (s) =>
 // generar nombre de usuario único
 async function generarUsuarioUnico(nombres, apellidos) {
   const base = `${norm(nombres)[0]}${norm(apellidos)}`;
-  
+
   const existe = await prisma.coordinador_area.findUnique({
     where: { usuario_coordinador: base },
   });
@@ -36,6 +37,13 @@ export async function getAllCoordinadores() {
   return prisma.coordinador_area.findMany({
     include: { area: true },
     orderBy: { id_coordinador: "asc" },
+  });
+}
+
+export async function getCoordinadorById(id) {
+  return prisma.coordinador_area.findUnique({
+    where: { id_coordinador: BigInt(id) },
+    include: { area: true }, // opcional, si quieres los datos del área
   });
 }
 

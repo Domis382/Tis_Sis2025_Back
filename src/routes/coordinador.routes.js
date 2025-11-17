@@ -8,6 +8,8 @@ const router = Router();
 // GET /api/coordinador
 router.get("/", ctrl.getAll);
 
+router.get("/:id", getOne);
+
 // POST /api/coordinador
 router.post("/", ctrl.create);
 
