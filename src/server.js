@@ -61,19 +61,55 @@ const errorHandler =
 
 app.use(errorHandler);
 
-// Inicio 
-const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-});
+// ⬇️ ⬇️ CAMBIO IMPORTANTE PARA TESTS ⬇️ ⬇️
 
-// Cierre 
-const shutdown = async () => {
-  console.log('Cerrando servidor…');
-  server.close(async () => {
-    try { await prisma?.$disconnect?.(); } catch (_) {}
-    process.exit(0);
+// Solo levantamos el servidor si **NO** estamos en tests
+/*
+let server;
+
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT || 3000;
+  server = app.listen(PORT, () => {
+    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   });
-};
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+
+  // Cierre elegante SOLO en entorno normal
+  const shutdown = async () => {
+    console.log('Cerrando servidor…');
+    server.close(async () => {
+      try { await prisma?.$disconnect?.(); } catch (_) {}
+      process.exit(0);
+    });
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+}
+
+// 👇 Esto es lo que necesita Supertest
+export default app;
+*/
+// ... todo lo que ya tienes arriba igual
+
+const isTest = process.env.JEST_WORKER_ID !== undefined;
+
+let server;
+
+if (!isTest) {
+  const PORT = process.env.PORT || 3000;
+  server = app.listen(PORT, () => {
+    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  });
+
+  const shutdown = async () => {
+    console.log('Cerrando servidor…');
+    server.close(async () => {
+      try { await prisma?.$disconnect?.(); } catch (_) {}
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+}
+
+export default app;
