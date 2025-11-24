@@ -1,99 +1,173 @@
 // src/services/responsable.service.js
-//Importa el cliente de Prisma
 import { PrismaClient } from '@prisma/client';
+
 const prisma = new PrismaClient();
 
-// Función "norm":
-// - Elimina tildes (á, é, í...)
-// - Quita espacios
-// - Convierte todo a MAYÚSCULAS
-// Se usa para generar nombres de usuario sin caracteres especiales.
-const norm = (s) =>
-  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toUpperCase();
-
-async function generarUsuarioUnico(nombres, apellidos) {
-  // Crea una base de usuario combinando la inicial del nombre y el apellido (ej: M + PEREZ -> MPEREZ)
-  const base = `${norm(nombres)[0]}${norm(apellidos)}`; 
-  // Verifica si ya existe un usuario con ese nombre exacto en la tabla
-  const ya = await prisma.responsable_area.findUnique({
-    where: { usuario_responsable: base },
-    select: { usuario_responsable: true },
-  });
-  // Si no existe, devuelve directamente el nombre base
-  if (!ya) return base;
-
-  // si existe, busca sufijos MPEREZ2, MPEREZ3...
-  let i = 2;
-  while (true) {
-    const candidato = `${base}${i}`;
-    const existe = await prisma.responsable_area.findUnique({
-      where: { usuario_responsable: candidato },
-      select: { usuario_responsable: true },
-    });
-    if (!existe) return candidato;
-    i++;
-  }
-}
-// Busca todos los registros en la tabla "responsable_area"
+// --- LISTAR RESPONSABLES ---
 export async function getAllResponsables() {
   return prisma.responsable_area.findMany({
-    include: { area: true },
+    include: { area: true, usuario: true },
     orderBy: { id_responsable: 'asc' },
   });
 }
-// Extrae los campos esperados del body recibido
-export async function createResponsable(body) {
-  const { nombres_evaluador, apellidos, correo_electronico, id_area, carnet } = body;
 
-  // Valida que todos los campos requeridos estén presentes
-  if (!nombres_evaluador || !apellidos || !correo_electronico || !id_area || !carnet) {
-    const e = new Error('Campos requeridos: nombres_evaluador, apellidos, correo_electronico, id_area, carnet');
-    e.status = 400; throw e;
+// --- CREAR RESPONSABLE (login unificado, sin bcrypt por ahora) ---
+export async function createResponsable(body) {
+  const {
+    nombres_evaluador,
+    apellidos,
+    correo_electronico,
+    id_area,
+    password,
+  } = body;
+
+  // VALIDACIÓN
+  if (!nombres_evaluador || !apellidos || !correo_electronico || !id_area) {
+    const e = new Error(
+      'Campos requeridos: nombres_evaluador, apellidos, correo_electronico, id_area'
+    );
+    e.status = 400;
+    throw e;
   }
 
-  // Convierte el ID del área a BigInt
   const areaId = BigInt(id_area);
-  // Verifica que el área exista antes de crear el responsable
+
+  // Verificar existencia del área
   const area = await prisma.area.findUnique({ where: { id_area: areaId } });
-  if (!area) { const e = new Error('id_area no existe'); e.status = 400; throw e; }
+  if (!area) {
+    const e = new Error('id_area no existe');
+    e.status = 400;
+    throw e;
+  }
 
-  // correo único
-  const dupCorreo = await prisma.responsable_area.findUnique({
-    where: { correo_electronico },
-    select: { id_responsable: true }
+  // Validar que no exista usuario con ese correo
+  const dupUser = await prisma.usuario.findUnique({
+    where: { correo: correo_electronico },
   });
-  if (dupCorreo) { const e = new Error('Registro duplicado: correo_electronico'); e.status = 409; throw e; }
+  if (dupUser) {
+    const e = new Error('Ya existe un usuario con ese correo');
+    e.status = 409;
+    throw e;
+  }
 
-  // genera usuario único
-  const usuario_responsable = await generarUsuarioUnico(nombres_evaluador, apellidos);
+  // ⚠️ Por ahora: guardar password "en plano" (solo para que no se caiga el sistema)
+  // Más adelante: cambiar esto por bcrypt.hash(...)
+  const plainPassword = password || '123456';
 
-  // contraseña inicial = carnet (por ahora)
-  const pass_responsable = String(carnet);
+  // Crear usuario
+  const nuevoUsuario = await prisma.usuario.create({
+    data: {
+      nombre: nombres_evaluador,
+      apellido: apellidos,
+      correo: correo_electronico,
+      passwordHash: plainPassword, // <- cambiar a hash cuando tengan bcrypt bien configurado
+      rol: 'RESPONSABLE',
+    },
+  });
 
-  // Crea el registro en la base de datos
+  // Crear responsable_area vinculado al usuario
   const creado = await prisma.responsable_area.create({
     data: {
       nombres_evaluador,
       apellidos,
       correo_electronico,
-      usuario_responsable,
-      pass_responsable,
       id_area: areaId,
+      id_usuario: nuevoUsuario.id_usuario,
     },
+    include: { area: true, usuario: true },
   });
 
   return creado;
 }
-// Actualiza los datos del responsable según su ID
+
+// --- ACTUALIZAR ---
 export async function updateResponsable(id, patch) {
-  return prisma.responsable_area.update({
-    where: { id_responsable: BigInt(id) },
-    data: patch,
+  const idResp = BigInt(id);
+
+  // Obtengo al responsable con su usuario
+  const responsable = await prisma.responsable_area.findUnique({
+    where: { id_responsable: idResp },
+    include: { usuario: true }
   });
+
+  if (!responsable) {
+    const e = new Error("Responsable no existe");
+    e.status = 404;
+    throw e;
+  }
+
+  // Campos que sí se guardan en responsable_area
+  const dataResp = {};
+  if (patch.nombres_evaluador !== undefined)
+    dataResp.nombres_evaluador = patch.nombres_evaluador;
+
+  if (patch.apellidos !== undefined)
+    dataResp.apellidos = patch.apellidos;
+
+  if (patch.correo_electronico !== undefined)
+    dataResp.correo_electronico = patch.correo_electronico;
+
+  if (patch.id_area !== undefined)
+    dataResp.id_area = BigInt(patch.id_area);
+
+  // ---- Actualizar tabla USUARIO ----
+  const dataUser = {};
+  if (patch.correo !== undefined)
+    dataUser.correo = patch.correo;
+
+  if (patch.telefono !== undefined)
+    dataUser.telefono = patch.telefono;
+
+  if (patch.carnet !== undefined)
+    dataUser.passwordHash = await bcrypt.hash(String(patch.carnet), 10);
+
+  // Ejecutamos en transacción
+  const [updatedResp, updatedUser] = await prisma.$transaction([
+    prisma.responsable_area.update({
+      where: { id_responsable: idResp },
+      data: dataResp,
+      include: { area: true },
+    }),
+    prisma.usuario.update({
+      where: { id_usuario: responsable.id_usuario },
+      data: dataUser,
+    }),
+  ]);
+
+  return { ...updatedResp, usuario: updatedUser };
 }
-// Elimina un responsable según su ID
+
+
+
+// --- ELIMINAR ---
 export async function deleteResponsable(id) {
-  await prisma.responsable_area.delete({ where: { id_responsable: BigInt(id) } });
+  const idResp = BigInt(id);
+
+  // 1. Buscar el responsable para saber qué usuario tiene asociado
+  const responsable = await prisma.responsable_area.findUnique({
+    where: { id_responsable: idResp },
+    select: { id_usuario: true },
+  });
+
+  if (!responsable) {
+    // si ya no existe, no hacemos nada raro
+    return true;
+  }
+
+  // 2. Hacer todo en una transacción: borrar responsable y, si aplica, su usuario
+  await prisma.$transaction(async (tx) => {
+    // borrar responsable_area
+    await tx.responsable_area.delete({
+      where: { id_responsable: idResp },
+    });
+
+    // si tiene usuario asociado, borrarlo también
+    if (responsable.id_usuario) {
+      await tx.usuario.delete({
+        where: { id_usuario: responsable.id_usuario },
+      });
+    }
+  });
+
   return true;
 }
-//Tip futuro: cuando activen “cambiar/olvidé mi contraseña”, hasheen con bcrypt y no devuelvan el pass.
