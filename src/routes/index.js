@@ -10,6 +10,8 @@ import evaluadorRoutes from './evaluador.routes.js';
 import inscritosRoutes from './inscritos.routes.js';
 import coordinadorRoutes from './coordinador.routes.js';
 
+import passwordRoutes from "./password.routes.js";
+
 // Middlewares
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -71,5 +73,7 @@ router.use('/inscritos', inscritosRoutes);
 router.use((_req, res) => {
   res.status(404).json({ ok: false, message: 'Ruta no encontrada' });
 });
+
+router.use(passwordRoutes); // expone /api/password/*
 
 export default router;
