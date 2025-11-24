@@ -1,56 +1,22 @@
-// 📂 src/controllers/auth.controller.js
-
 import jwt from 'jsonwebtoken';
-import prisma from '../config/prisma.js';
+import bcrypt from 'bcryptjs';
+import { PrismaClient } from '@prisma/client';
 
-// Si luego quieres usar bcrypt, lo reactivamos
-// import bcrypt from 'bcryptjs';
+const prisma = new PrismaClient();
 
 const signToken = (payload) =>
-  jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
+  jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
 
-// Mapa de enum rol_t -> rol string que usas en el front / middleware
-const ROL_MAP = {
-  ADMIN: 'Administrador',
-  COORDINADOR: 'Coordinador Area',
-  RESPONSABLE: 'Responsable de Area',
-  EVALUADOR: 'Evaluador',
-};
-
-/**
- * LOGIN usando la tabla USUARIO
- * - username = correo
- * - password = passwordHash (por ahora texto plano)
- */
-export async function login(req, res, next) {
+export async function login(req, res) {
   try {
-    const { username, password, role } = req.body;
-    console.log('📨 Datos recibidos:', { username, password, role });
+    const { correo, password } = req.body;
 
-    if (!username || !password) {
-      return res
-        .status(400)
-        .json({ ok: false, error: 'username y password son requeridos' });
+    if (!correo || !password) {
+      return res.status(400).json({ ok: false, error: "correo y password requeridos" });
     }
 
-    // 🔧 MODO MOCK (opcional)
-    if (process.env.AUTH_MOCK === '1') {
-      console.log('🔧 Usando MODO MOCK');
-      const user = {
-        id: 999,
-        username,
-        role: role || 'Administrador',
-        id_area: 0,
-      };
-      const token = signToken(user);
-      return res.json({ ok: true, token, user });
-    }
-
-    console.log('🔍 Buscando usuario en tabla usuario por correo (username)...');
-
-    // username lo tomamos como CORREO
-    const usuario = await prisma.usuario.findUnique({
-      where: { correo: username },
+    const user = await prisma.usuario.findUnique({
+      where: { correo },
       include: {
         administrador: true,
         coordinador_area: true,
@@ -59,131 +25,45 @@ export async function login(req, res, next) {
       },
     });
 
-    console.log('👤 Usuario encontrado:', usuario);
-
-    if (!usuario) {
-      return res
-        .status(404)
-        .json({ ok: false, error: 'Usuario no encontrado' });
+    if (!user) {
+      return res.status(404).json({ ok: false, error: "Credenciales inválidas" });
     }
 
-    if (usuario.estado !== 'ACTIVO') {
-      return res
-        .status(403)
-        .json({ ok: false, error: 'Usuario inactivo' });
+    const valid = password === user.passwordHash;
+
+
+    if (!valid) {
+      return res.status(400).json({ ok: false, error: "Credenciales inválidas" });
     }
 
-    // 🧾 Validación de contraseña
-    // Por ahora: comparación en plano contra passwordHash
-    // Luego podemos cambiar a bcrypt.compare(password, usuario.passwordHash)
-    const isValid = usuario.passwordHash === password;
+    // ... genera token y responde { ok: true, token, usuario: { ... } }
 
-    // Si quieres ver el valor:
-    console.log('🔐 passwordHash almacenado:', usuario.passwordHash);
-    console.log('🔐 password recibido:', password);
-    console.log('✅ Coinciden?', isValid);
+    // 3️⃣ Preparar datos por rol
+    let rolData = null;
 
-    if (!isValid) {
-      return res
-        .status(400)
-        .json({ ok: false, error: 'Credenciales inválidas' });
-    }
-
-    // 🧠 Determinar el rol "string" que usarán middleware y front
-    const mappedRole = ROL_MAP[usuario.rol] || usuario.rol;
-
-    // 🧬 Armar userData según el rol real del usuario
-    let userData = {
-      id: Number(usuario.id_usuario),
-      username: usuario.correo,
-      nombre: usuario.nombre,
-      apellidos: usuario.apellido,
-      email: usuario.correo,
-      id_area: null,
-    };
-
-    switch (usuario.rol) {
-      case 'ADMIN': {
-        const admin = usuario.administrador;
-        if (admin) {
-          userData = {
-            id: Number(admin.id_administrador),
-            username: admin.correo_admin,
-            nombre: admin.nombre_admin,
-            apellidos: admin.apellido_admin,
-            email: admin.correo_admin,
-            id_area: admin.id_area ? Number(admin.id_area) : null,
-          };
-        }
+    switch (user.rol) {
+      case "ADMIN":
+        rolData = user.administrador;
         break;
-      }
 
-      case 'COORDINADOR': {
-        const coord = usuario.coordinador_area;
-        if (coord) {
-          userData = {
-            id: Number(coord.id_coordinador),
-            // aquí podrías usar coord.usuario_coordinador si quieres mantenerlo
-            username: usuario.correo,
-            nombre: coord.nombre_coordinador,
-            apellidos: coord.apellidos_coordinador,
-            id_area: Number(coord.id_area),
-            email: usuario.correo,
-          };
-        }
+      case "COORDINADOR":
+        rolData = user.coordinador_area;
         break;
-      }
 
-      case 'RESPONSABLE': {
-        const resp = usuario.responsable_area;
-        if (resp) {
-          userData = {
-            id: Number(resp.id_responsable),
-            username: usuario.correo,
-            nombre: resp.nombres_evaluador,
-            apellidos: resp.apellidos,
-            id_area: Number(resp.id_area),
-            email: resp.correo_electronico,
-          };
-        }
+      case "RESPONSABLE":
+        rolData = user.responsable_area;
         break;
-      }
 
-      case 'EVALUADOR': {
-        const evalua = usuario.evaluador;
-        if (evalua) {
-          userData = {
-            id: Number(evalua.id_evaluador),
-            username: usuario.correo,
-            nombre: evalua.nombre_evaluado,
-            apellidos: evalua.apellidos_evaluador,
-            id_area: Number(evalua.id_area),
-            email: usuario.correo,
-          };
-        }
-        break;
-      }
-
-      default:
-        // COMPETIDOR u otros
-        userData = {
-          id: Number(usuario.id_usuario),
-          username: usuario.correo,
-          nombre: usuario.nombre,
-          apellidos: usuario.apellido,
-          email: usuario.correo,
-          id_area: null,
-        };
+      case "EVALUADOR":
+        rolData = user.evaluador;
         break;
     }
 
-    console.log('✅ userData final:', userData);
-    console.log('✅ rol (enum):', usuario.rol, '-> rol (string):', mappedRole);
-
-    // 🔑 Generar token JWT
+    // 4️⃣ Crear token
     const tokenPayload = {
-      ...userData,
-      role: mappedRole, // mantienes el formato que usa tu authMiddleware
+      id_usuario: user.id_usuario,
+      rol: user.rol,
+      id_area: rolData?.id_area || null
     };
 
     const token = signToken(tokenPayload);
@@ -191,10 +71,61 @@ export async function login(req, res, next) {
     return res.json({
       ok: true,
       token,
-      user: userData,
+      usuario: {
+        id_usuario: user.id_usuario,
+        nombre: user.nombre,
+        apellido: user.apellido,
+        correo: user.correo,
+        rol: user.rol,
+        rolInfo: rolData
+      }
     });
-  } catch (e) {
-    console.error('❌ Error en login:', e);
-    next(e);
+
+  } catch (err) {
+    console.error("Error LOGIN =>", err);
+    return res.status(500).json({ ok: false, error: "Error interno" });
+  }
+}
+export async function register(req, res) {
+  try {
+    const {
+      nombre,      // Recibir nombre por separado
+      apellido,    // Recibir apellido por separado
+      correo,
+      password,
+      telefono,
+      fechaNacimiento, // formato: "YYYY-MM-DD"
+    } = req.body;
+
+    if (!nombre || !apellido || !correo || !password) {
+      return res
+        .status(400)
+        .json({ ok: false, error: 'Nombre, apellido, correo y password son requeridos' });
+    }
+
+    // ¿ya existe ese correo?
+    const exists = await prisma.usuario.findUnique({ where: { correo } });
+    if (exists) {
+      return res.status(400).json({ ok: false, error: 'El correo ya está registrado' });
+    }
+
+    // Crear usuario con nombre y apellido separados
+    const nuevo = await prisma.usuario.create({
+      data: {
+        nombre: nombre.trim(),
+        apellido: apellido.trim(),
+        correo: correo.trim(),
+        passwordHash: password,
+        telefono: telefono || null,
+        fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
+        rol: 'COMPETIDOR',
+        estado: 'ACTIVO',
+      },
+    });
+
+    return res.status(201).json({ ok: true, usuario: nuevo });
+  } catch (err) {
+    console.error('Error en register:', err);
+    return res.status(500).json({ ok: false, error: 'Error interno al registrar' });
   }
 }

@@ -6,7 +6,7 @@ import { Router } from 'express';
 
 // Importamos la función 'login' desde el controlador de autenticación
 // 👉 Este controlador contiene la lógica para validar credenciales y generar el token JWT
-import { login } from '../controllers/auth.controller.js';
+import { login, register } from '../controllers/auth.controller.js';
 
 // Creamos una instancia del router de Express
 const router = Router();
@@ -18,7 +18,9 @@ const router = Router();
 // Por convención, el "index.js" de rutas antepone '/api' (por ejemplo '/api/auth/login').
 // Entonces esta ruta se resolverá finalmente como:
 //  POST http://localhost:3000/api/auth/login
-router.post('/auth/login', login);
+router.post('/login', login);
+
+router.post('/register', register);
 
 // Exportamos el router para ser usado en src/routes/index.js
 export default router;
