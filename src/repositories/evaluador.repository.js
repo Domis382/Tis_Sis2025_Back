@@ -1,3 +1,61 @@
+import db from "../config/prisma.js";
+
+// Obtener todos los evaluadores
+export async function findAllEvaluadores() {
+  return await db.evaluador.findMany({
+    include: {
+      area: true
+    }
+  });
+}
+
+// Obtener evaluador por ID
+export async function findEvaluadorById(id) {
+  return await db.evaluador.findUnique({
+    where: { id_evaluador: Number(id) },
+    include: {
+      area: true
+    }
+  });
+}
+
+// Crear evaluador
+export async function createEvaluador(data) {
+  return await db.evaluador.create({
+    data: {
+      nombre_evaluado: data.nombre_evaluado,
+      apellidos_evaluador: data.apellidos_evaluador,
+      id_area: Number(data.id_area)
+    },
+    include: {
+      area: true
+    }
+  });
+}
+
+// Actualizar evaluador
+export async function updateEvaluador(id, data) {
+  return await db.evaluador.update({
+    where: { id_evaluador: Number(id) },
+    data: {
+      nombre_evaluado: data.nombre_evaluado,
+      apellidos_evaluador: data.apellidos_evaluador,
+      id_area: Number(data.id_area)
+    },
+    include: {
+      area: true
+    }
+  });
+}
+
+// Eliminar evaluador
+export async function deleteEvaluador(id) {
+  return await db.evaluador.delete({
+    where: { id_evaluador: Number(id) }
+  });
+}
+
+
 //se creo para la abla de evaluadores en admin 
 /*
 ==========================================
@@ -56,47 +114,3 @@ export function deleteEvaluador(id) {
 // Repositorio que maneja la persistencia de Evaluadores (LowDB)
 // ============================================================
 
-import { db } from '../config/db.js';
-
-// ✅ Obtener todos los evaluadores
-export async function findAllEvaluadores() {
-  await db.read();
-  return db.data.evaluadores;
-}
-
-// ✅ Obtener un evaluador por ID
-export async function findEvaluadorById(id) {
-  await db.read();
-  return db.data.evaluadores.find(e => e.id === Number(id)) || null;
-}
-
-// ✅ Crear un nuevo evaluador
-export async function createEvaluador(data) {
-  await db.read();
-  const nuevo = {
-    id: Date.now(), // ID generado
-    ...data
-  };
-  db.data.evaluadores.push(nuevo);
-  await db.write();
-  return nuevo;
-}
-
-// ✅ Actualizar un evaluador existente
-export async function updateEvaluador(id, data) {
-  await db.read();
-  const index = db.data.evaluadores.findIndex(e => e.id === Number(id));
-  if (index === -1) return null;
-
-  db.data.evaluadores[index] = { ...db.data.evaluadores[index], ...data };
-  await db.write();
-  return db.data.evaluadores[index];
-}
-
-// ✅ Eliminar un evaluador
-export async function deleteEvaluador(id) {
-  await db.read();
-  db.data.evaluadores = db.data.evaluadores.filter(e => e.id !== Number(id));
-  await db.write();
-  return true;
-}

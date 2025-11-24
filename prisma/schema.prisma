@@ -75,6 +75,11 @@ model coordinador_area {
   nombre_coordinador    String          @db.VarChar(100)
   apellidos_coordinador String          @db.VarChar(100)
   id_area               BigInt
+  carnet                String?         @db.VarChar(50)
+  correo_electronico    String?         @unique
+  pass_coordinador      String?
+  telefono              String?         @db.VarChar(50)
+  usuario_coordinador   String?         @unique
   administrador         administrador[]
   area                  area            @relation(fields: [id_area], references: [id_area])
   importaciones         importaciones[]
