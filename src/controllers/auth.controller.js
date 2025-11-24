@@ -4,7 +4,7 @@ import nodemailer from 'nodemailer';
 import prisma from '../config/prisma.js';
 
 const signToken = (payload) =>
-  jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
+  jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
 
 const ROL_MAP = {
   ADMIN: 'Administrador',
@@ -23,7 +23,7 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
   tls: {
-    // ⚠️ SOLO PARA DESARROLLO: ignora certificados self-signed
+    // ⚠ SOLO PARA DESARROLLO: ignora certificados self-signed
     rejectUnauthorized: false,
   },
 });
@@ -32,10 +32,13 @@ const transporter = nodemailer.createTransport({
 // ================== LOGIN ==================
 export async function login(req, res, next) {
   try {
-    const { correo, password } = req.body;
+    const { username, password, role } = req.body;
+    console.log('📨 Datos recibidos:', { username, password, role });
 
-    if (!correo || !password) {
-      return res.status(400).json({ ok: false, error: "correo y password requeridos" });
+    if (!username || !password) {
+      return res
+        .status(400)
+        .json({ ok: false, error: 'username y password son requeridos' });
     }
 
     if (process.env.AUTH_MOCK === '1') {
@@ -62,8 +65,12 @@ export async function login(req, res, next) {
       },
     });
 
-    if (!user) {
-      return res.status(404).json({ ok: false, error: "Credenciales inválidas" });
+    console.log('👤 Usuario encontrado:', usuario);
+
+    if (!usuario) {
+      return res
+        .status(404)
+        .json({ ok: false, error: 'Usuario no encontrado' });
     }
 
     if (usuario.estado !== 'ACTIVO') {
@@ -107,6 +114,7 @@ export async function login(req, res, next) {
           };
         }
         break;
+      }
 
       case 'COORDINADOR': {
         const coord = usuario.coordinador_area;
@@ -121,10 +129,22 @@ export async function login(req, res, next) {
           };
         }
         break;
+      }
 
-      case "RESPONSABLE":
-        rolData = user.responsable_area;
+      case 'RESPONSABLE': {
+        const resp = usuario.responsable_area;
+        if (resp) {
+          userData = {
+            id: Number(resp.id_responsable),
+            username: usuario.correo,
+            nombre: resp.nombres_evaluador,
+            apellidos: resp.apellidos,
+            id_area: Number(resp.id_area),
+            email: resp.correo_electronico,
+          };
+        }
         break;
+      }
 
       case 'EVALUADOR': {
         const evalua = usuario.evaluador;
@@ -163,7 +183,7 @@ export async function login(req, res, next) {
 
     const token = signToken(tokenPayload);
 
-    return res.json({
+    {/*return res.json({
       ok: true,
       token,
       usuario: {
@@ -175,10 +195,19 @@ export async function login(req, res, next) {
         rolInfo: rolData
       }
     });
+    */}
+    return res.json({
+  ok: true,
+  token,
+  usuario: {
+    ...userData,
+    rol: mappedRole
+  }
+});
 
-  } catch (err) {
-    console.error("Error LOGIN =>", err);
-    return res.status(500).json({ ok: false, error: "Error interno" });
+  } catch (e) {
+    console.error('❌ Error en login:', e);
+    next(e);
   }
 }
 
@@ -203,12 +232,12 @@ export async function sendResetCode(req, res) {
     }
 
     // Código de 6 dígitos
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
 
     await prisma.password_reset.create({
       data: {
         userId: usuario.id_usuario,
-        code,
+        code: resetCode,
         expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min
       },
     });
@@ -217,7 +246,7 @@ export async function sendResetCode(req, res) {
       from: process.env.EMAIL_USER,
       to: correo,
       subject: 'Código de recuperación de contraseña',
-      text: `Tu código de recuperación es: ${code}`,
+      text: `Tu código de recuperación es: ${resetCode}`,
     };
 
     await transporter.sendMail(mailOptions);
@@ -308,5 +337,48 @@ export async function resetPassword(req, res) {
   } catch (err) {
     console.error("❌ Error al resetear contraseña:", err);
     return res.status(500).json({ ok: false, error: "Error de servidor" });
+  }
+}
+export async function register(req, res) {
+  try {
+    const {
+      nombre,      // Recibir nombre por separado
+      apellido,    // Recibir apellido por separado
+      correo,
+      password,
+      telefono,
+      fechaNacimiento, // formato: "YYYY-MM-DD"
+    } = req.body;
+
+    if (!nombre || !apellido || !correo || !password) {
+      return res
+        .status(400)
+        .json({ ok: false, error: 'Nombre, apellido, correo y password son requeridos' });
+    }
+
+    // ¿ya existe ese correo?
+    const exists = await prisma.usuario.findUnique({ where: { correo } });
+    if (exists) {
+      return res.status(400).json({ ok: false, error: 'El correo ya está registrado' });
+    }
+
+    // Crear usuario con nombre y apellido separados
+    const nuevo = await prisma.usuario.create({
+      data: {
+        nombre: nombre.trim(),
+        apellido: apellido.trim(),
+        correo: correo.trim(),
+        passwordHash: password,
+        telefono: telefono || null,
+        fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
+        rol: 'COMPETIDOR',
+        estado: 'ACTIVO',
+      },
+    });
+
+    return res.status(201).json({ ok: true, usuario: nuevo });
+  } catch (err) {
+    console.error('Error en register:', err);
+    return res.status(500).json({ ok: false, error: 'Error interno al registrar' });
   }
 }

@@ -76,24 +76,22 @@ model administrador {
   id_usuario BigInt?  @unique
   usuario    usuario? @relation(fields: [id_usuario], references: [id_usuario])
 
-  nombre_admin        String               @db.VarChar(100)
-  apellido_admin      String               @db.VarChar(100)
-  correo_admin        String               @unique @db.VarChar(150)
-  estado              estado_admin_t       @default(ACTIVO)
-  fecha_registro      DateTime             @default(now()) @db.Timestamp(6)
-  id_area             BigInt?
-  id_coordinador      BigInt?
-  id_parametro        BigInt?
-  id_listas           BigInt?
-  id_auditoria        BigInt?
-  id_usuario          BigInt?              @unique
-  area                area?                @relation(fields: [id_area], references: [id_area])
-  coordinador_area    coordinador_area?    @relation(fields: [id_coordinador], references: [id_coordinador])
-  listas_publicadas   listas_publicadas?   @relation(fields: [id_listas], references: [id_listas])
+  nombre_admin      String             @db.VarChar(100)
+  apellido_admin    String             @db.VarChar(100)
+  correo_admin      String             @unique @db.VarChar(150)
+  estado            estado_admin_t     @default(ACTIVO)
+  fecha_registro    DateTime           @default(now()) @db.Timestamp(6)
+  id_area           BigInt?
+  id_coordinador    BigInt?
+  id_parametro      BigInt?
+  id_listas         BigInt?
+  id_auditoria      BigInt?
+  area              area?              @relation(fields: [id_area], references: [id_area])
+  coordinador_area  coordinador_area?  @relation(fields: [id_coordinador], references: [id_coordinador])
+  listas_publicadas listas_publicadas? @relation(fields: [id_listas], references: [id_listas])
   parametro_medallero parametro_medallero? @relation(fields: [id_parametro], references: [id_parametro])
-  usuario             usuario?             @relation(fields: [id_usuario], references: [id_usuario])
-  auditoria           auditoria?           @relation(fields: [id_auditoria], references: [id_auditoria], map: "fk_admin_auditoria")
-  anuncios            anuncio[]
+  auditoria         auditoria?         @relation(fields: [id_auditoria], references: [id_auditoria], map: "fk_admin_auditoria")
+  anuncios          anuncio[]
 }
 
 model area {
@@ -107,7 +105,6 @@ model area {
   listas_publicadas   listas_publicadas[]
   parametro_medallero parametro_medallero?
   responsable_area    responsable_area[]
-  anuncios            anuncio[]
 }
 
 model auditoria {
@@ -156,10 +153,8 @@ model coordinador_area {
   pass_coordinador      String?
   telefono              String?         @db.VarChar(50)
   usuario_coordinador   String?         @unique
-  id_usuario            BigInt?         @unique
   administrador         administrador[]
   area                  area            @relation(fields: [id_area], references: [id_area])
-  usuario               usuario?        @relation(fields: [id_usuario], references: [id_usuario])
   importaciones         importaciones[]
 }
 
@@ -189,10 +184,8 @@ model evaluador {
   nombre_evaluado     String         @db.VarChar(100)
   apellidos_evaluador String         @db.VarChar(100)
   id_area             BigInt
-  id_usuario          BigInt?        @unique
   evaluaciones        evaluaciones[]
   area                area           @relation(fields: [id_area], references: [id_area])
-  usuario             usuario?       @relation(fields: [id_usuario], references: [id_usuario])
 }
 
 model fases {
