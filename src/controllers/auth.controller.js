@@ -1,15 +1,11 @@
 // 📂 src/controllers/auth.controller.js
-
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
 import prisma from '../config/prisma.js';
-
-// Si luego quieres usar bcrypt, lo reactivamos
-// import bcrypt from 'bcryptjs';
 
 const signToken = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
 
-// Mapa de enum rol_t -> rol string que usas en el front / middleware
 const ROL_MAP = {
   ADMIN: 'Administrador',
   COORDINADOR: 'Coordinador Area',
@@ -17,11 +13,23 @@ const ROL_MAP = {
   EVALUADOR: 'Evaluador',
 };
 
-/**
- * LOGIN usando la tabla USUARIO
- * - username = correo
- * - password = passwordHash (por ahora texto plano)
- */
+// 🔹 Transporter de nodemailer (usa tu EMAIL_USER / EMAIL_PASS del .env)
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,          // SSL
+  secure: true,       // true para 465
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+  tls: {
+    // ⚠️ SOLO PARA DESARROLLO: ignora certificados self-signed
+    rejectUnauthorized: false,
+  },
+});
+
+
+// ================== LOGIN ==================
 export async function login(req, res, next) {
   try {
     const { username, password, role } = req.body;
@@ -33,7 +41,6 @@ export async function login(req, res, next) {
         .json({ ok: false, error: 'username y password son requeridos' });
     }
 
-    // 🔧 MODO MOCK (opcional)
     if (process.env.AUTH_MOCK === '1') {
       console.log('🔧 Usando MODO MOCK');
       const user = {
@@ -48,7 +55,6 @@ export async function login(req, res, next) {
 
     console.log('🔍 Buscando usuario en tabla usuario por correo (username)...');
 
-    // username lo tomamos como CORREO
     const usuario = await prisma.usuario.findUnique({
       where: { correo: username },
       include: {
@@ -68,17 +74,11 @@ export async function login(req, res, next) {
     }
 
     if (usuario.estado !== 'ACTIVO') {
-      return res
-        .status(403)
-        .json({ ok: false, error: 'Usuario inactivo' });
+      return res.status(403).json({ ok: false, error: 'Usuario inactivo' });
     }
 
-    // 🧾 Validación de contraseña
-    // Por ahora: comparación en plano contra passwordHash
-    // Luego podemos cambiar a bcrypt.compare(password, usuario.passwordHash)
     const isValid = usuario.passwordHash === password;
 
-    // Si quieres ver el valor:
     console.log('🔐 passwordHash almacenado:', usuario.passwordHash);
     console.log('🔐 password recibido:', password);
     console.log('✅ Coinciden?', isValid);
@@ -89,10 +89,8 @@ export async function login(req, res, next) {
         .json({ ok: false, error: 'Credenciales inválidas' });
     }
 
-    // 🧠 Determinar el rol "string" que usarán middleware y front
     const mappedRole = ROL_MAP[usuario.rol] || usuario.rol;
 
-    // 🧬 Armar userData según el rol real del usuario
     let userData = {
       id: Number(usuario.id_usuario),
       username: usuario.correo,
@@ -123,7 +121,6 @@ export async function login(req, res, next) {
         if (coord) {
           userData = {
             id: Number(coord.id_coordinador),
-            // aquí podrías usar coord.usuario_coordinador si quieres mantenerlo
             username: usuario.correo,
             nombre: coord.nombre_coordinador,
             apellidos: coord.apellidos_coordinador,
@@ -165,7 +162,6 @@ export async function login(req, res, next) {
       }
 
       default:
-        // COMPETIDOR u otros
         userData = {
           id: Number(usuario.id_usuario),
           username: usuario.correo,
@@ -180,10 +176,9 @@ export async function login(req, res, next) {
     console.log('✅ userData final:', userData);
     console.log('✅ rol (enum):', usuario.rol, '-> rol (string):', mappedRole);
 
-    // 🔑 Generar token JWT
     const tokenPayload = {
       ...userData,
-      role: mappedRole, // mantienes el formato que usa tu authMiddleware
+      role: mappedRole,
     };
 
     const token = signToken(tokenPayload);
@@ -196,5 +191,134 @@ export async function login(req, res, next) {
   } catch (e) {
     console.error('❌ Error en login:', e);
     next(e);
+  }
+}
+
+// ================== FORGOT PASSWORD ==================
+export async function sendResetCode(req, res) {
+  try {
+    const { correo } = req.body;
+    if (!correo) {
+      return res
+        .status(400)
+        .json({ ok: false, error: 'El correo es obligatorio' });
+    }
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { correo },
+    });
+
+    if (!usuario) {
+      return res
+        .status(404)
+        .json({ ok: false, error: 'No existe un usuario con ese correo' });
+    }
+
+    // Código de 6 dígitos
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await prisma.password_reset.create({
+      data: {
+        userId: usuario.id_usuario,
+        code,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: correo,
+      subject: 'Código de recuperación de contraseña',
+      text: `Tu código de recuperación es: ${code}`,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return res.json({ ok: true, message: 'Código enviado correctamente' });
+  } catch (e) {
+    console.error('❌ Error en sendResetCode:', e);
+    return res
+      .status(500)
+      .json({ ok: false, error: 'Error enviando código' });
+  }
+}
+
+// ================== VERIFY CODE ==================
+
+// 📌 VERIFICAR CÓDIGO DE RECUPERACIÓN
+export async function verifyResetCode(req, res) {
+  try {
+    const { correo, code } = req.body;
+
+    if (!correo || !code) {
+      return res.status(400).json({ ok: false, error: "Datos incompletos" });
+    }
+
+    // Buscar usuario
+    const usuario = await prisma.usuario.findUnique({
+      where: { correo },
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ ok: false, error: "Usuario no encontrado" });
+    }
+
+    // Buscar código válido
+    const registro = await prisma.password_reset.findFirst({
+      where: {
+        userId: usuario.id_usuario,
+        code,
+        used: false,
+        expiresAt: { gte: new Date() }, // no expirado
+      },
+    });
+
+    if (!registro) {
+      return res.status(400).json({ ok: false, error: "Código inválido o expirado" });
+    }
+
+    // Marcar como usado
+    await prisma.password_reset.update({
+      where: { id_reset: registro.id_reset },
+      data: { used: true },
+    });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("❌ Error verificando código:", err);
+    return res.status(500).json({ ok: false, error: "Error de servidor" });
+  }
+}
+
+
+// 📌 RESET PASSWORD
+export async function resetPassword(req, res) {
+  try {
+    const { correo, password } = req.body;
+
+    if (!correo || !password) {
+      return res.status(400).json({ ok: false, error: "Datos incompletos" });
+    }
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { correo },
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ ok: false, error: "Usuario no encontrado" });
+    }
+
+    // 🔥 GUARDAR SIN HASH (como usas ahora)
+    await prisma.usuario.update({
+      where: { id_usuario: usuario.id_usuario },
+      data: {
+        passwordHash: password,
+      },
+    });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("❌ Error al resetear contraseña:", err);
+    return res.status(500).json({ ok: false, error: "Error de servidor" });
   }
 }
