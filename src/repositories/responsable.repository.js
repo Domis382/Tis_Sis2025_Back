@@ -107,6 +107,8 @@ export async function listResponsables() {
   });
 }
 
+const gestion = GESTION_ACTUAL;
+
 export async function createResponsable({
   nombres_evaluador,
   apellidos,
@@ -158,3 +160,4 @@ export async function deleteResponsable(id_responsable) {
   });
   return true;
 }
+

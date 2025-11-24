@@ -8,6 +8,9 @@ import evaluacionRoutes from './evaluaciones.routes.js';
 import responsableRoutes from './responsable.routes.js';
 import evaluadorRoutes from './evaluador.routes.js';
 import inscritosRoutes from './inscritos.routes.js';
+import coordinadorRoutes from './coordinador.routes.js';
+
+import passwordRoutes from "./password.routes.js";
 
 // Middlewares
 import { authMiddleware } from '../middlewares/authMiddleware.js';
@@ -59,6 +62,7 @@ router.get(
 router.use('/evaluaciones', evaluacionRoutes);
 router.use('/responsables', responsableRoutes);
 router.use('/evaluadores', evaluadorRoutes);
+router.use('/coordinador', coordinadorRoutes);
 
 // Importación de inscritos (estas rutas ya protegen con requireRole en su propio archivo)
 router.use('/inscritos', inscritosRoutes);
@@ -69,5 +73,7 @@ router.use('/inscritos', inscritosRoutes);
 router.use((_req, res) => {
   res.status(404).json({ ok: false, message: 'Ruta no encontrada' });
 });
+
+router.use(passwordRoutes); // expone /api/password/*
 
 export default router;

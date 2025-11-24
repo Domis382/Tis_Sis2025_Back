@@ -1,22 +1,62 @@
+// 📂 src/controllers/auth.controller.js
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import nodemailer from 'nodemailer';
+import prisma from '../config/prisma.js';
 
 const signToken = (payload) =>
-  jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
+  jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
 
-export async function login(req, res) {
+const ROL_MAP = {
+  ADMIN: 'Administrador',
+  COORDINADOR: 'Coordinador Area',
+  RESPONSABLE: 'Responsable de Area',
+  EVALUADOR: 'Evaluador',
+};
+
+// 🔹 Transporter de nodemailer (usa tu EMAIL_USER / EMAIL_PASS del .env)
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,          // SSL
+  secure: true,       // true para 465
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+  tls: {
+    // ⚠️ SOLO PARA DESARROLLO: ignora certificados self-signed
+    rejectUnauthorized: false,
+  },
+});
+
+
+// ================== LOGIN ==================
+export async function login(req, res, next) {
   try {
-    const { correo, password } = req.body;
+    const { username, password, role } = req.body;
+    console.log('📨 Datos recibidos:', { username, password, role });
 
-    if (!correo || !password) {
-      return res.status(400).json({ ok: false, error: "correo y password requeridos" });
+    if (!username || !password) {
+      return res
+        .status(400)
+        .json({ ok: false, error: 'username y password son requeridos' });
     }
 
-    const user = await prisma.usuario.findUnique({
-      where: { correo },
+    if (process.env.AUTH_MOCK === '1') {
+      console.log('🔧 Usando MODO MOCK');
+      const user = {
+        id: 999,
+        username,
+        role: role || 'Administrador',
+        id_area: 0,
+      };
+      const token = signToken(user);
+      return res.json({ ok: true, token, user });
+    }
+
+    console.log('🔍 Buscando usuario en tabla usuario por correo (username)...');
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { correo: username },
       include: {
         administrador: true,
         coordinador_area: true,
@@ -25,45 +65,120 @@ export async function login(req, res) {
       },
     });
 
-    if (!user) {
-      return res.status(404).json({ ok: false, error: "Credenciales inválidas" });
+    console.log('👤 Usuario encontrado:', usuario);
+
+    if (!usuario) {
+      return res
+        .status(404)
+        .json({ ok: false, error: 'Usuario no encontrado' });
     }
 
-    const valid = password === user.passwordHash;
-
-
-    if (!valid) {
-      return res.status(400).json({ ok: false, error: "Credenciales inválidas" });
+    if (usuario.estado !== 'ACTIVO') {
+      return res.status(403).json({ ok: false, error: 'Usuario inactivo' });
     }
 
-    // ... genera token y responde { ok: true, token, usuario: { ... } }
+    const isValid = usuario.passwordHash === password;
 
-    // 3️⃣ Preparar datos por rol
-    let rolData = null;
+    console.log('🔐 passwordHash almacenado:', usuario.passwordHash);
+    console.log('🔐 password recibido:', password);
+    console.log('✅ Coinciden?', isValid);
 
-    switch (user.rol) {
-      case "ADMIN":
-        rolData = user.administrador;
+    if (!isValid) {
+      return res
+        .status(400)
+        .json({ ok: false, error: 'Credenciales inválidas' });
+    }
+
+    const mappedRole = ROL_MAP[usuario.rol] || usuario.rol;
+
+    let userData = {
+      id: Number(usuario.id_usuario),
+      username: usuario.correo,
+      nombre: usuario.nombre,
+      apellidos: usuario.apellido,
+      email: usuario.correo,
+      id_area: null,
+    };
+
+    switch (usuario.rol) {
+      case 'ADMIN': {
+        const admin = usuario.administrador;
+        if (admin) {
+          userData = {
+            id: Number(admin.id_administrador),
+            username: admin.correo_admin,
+            nombre: admin.nombre_admin,
+            apellidos: admin.apellido_admin,
+            email: admin.correo_admin,
+            id_area: admin.id_area ? Number(admin.id_area) : null,
+          };
+        }
         break;
+      }
 
-      case "COORDINADOR":
-        rolData = user.coordinador_area;
+      case 'COORDINADOR': {
+        const coord = usuario.coordinador_area;
+        if (coord) {
+          userData = {
+            id: Number(coord.id_coordinador),
+            username: usuario.correo,
+            nombre: coord.nombre_coordinador,
+            apellidos: coord.apellidos_coordinador,
+            id_area: Number(coord.id_area),
+            email: usuario.correo,
+          };
+        }
         break;
+      }
 
-      case "RESPONSABLE":
-        rolData = user.responsable_area;
+      case 'RESPONSABLE': {
+        const resp = usuario.responsable_area;
+        if (resp) {
+          userData = {
+            id: Number(resp.id_responsable),
+            username: usuario.correo,
+            nombre: resp.nombres_evaluador,
+            apellidos: resp.apellidos,
+            id_area: Number(resp.id_area),
+            email: resp.correo_electronico,
+          };
+        }
         break;
+      }
 
-      case "EVALUADOR":
-        rolData = user.evaluador;
+      case 'EVALUADOR': {
+        const evalua = usuario.evaluador;
+        if (evalua) {
+          userData = {
+            id: Number(evalua.id_evaluador),
+            username: usuario.correo,
+            nombre: evalua.nombre_evaluado,
+            apellidos: evalua.apellidos_evaluador,
+            id_area: Number(evalua.id_area),
+            email: usuario.correo,
+          };
+        }
+        break;
+      }
+
+      default:
+        userData = {
+          id: Number(usuario.id_usuario),
+          username: usuario.correo,
+          nombre: usuario.nombre,
+          apellidos: usuario.apellido,
+          email: usuario.correo,
+          id_area: null,
+        };
         break;
     }
 
-    // 4️⃣ Crear token
+    console.log('✅ userData final:', userData);
+    console.log('✅ rol (enum):', usuario.rol, '-> rol (string):', mappedRole);
+
     const tokenPayload = {
-      id_usuario: user.id_usuario,
-      rol: user.rol,
-      id_area: rolData?.id_area || null
+      ...userData,
+      role: mappedRole,
     };
 
     const token = signToken(tokenPayload);
@@ -80,10 +195,138 @@ export async function login(req, res) {
         rolInfo: rolData
       }
     });
+  } catch (e) {
+    console.error('❌ Error en login:', e);
+    next(e);
+  }
+}
 
+// ================== FORGOT PASSWORD ==================
+export async function sendResetCode(req, res) {
+  try {
+    const { correo } = req.body;
+    if (!correo) {
+      return res
+        .status(400)
+        .json({ ok: false, error: 'El correo es obligatorio' });
+    }
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { correo },
+    });
+
+    if (!usuario) {
+      return res
+        .status(404)
+        .json({ ok: false, error: 'No existe un usuario con ese correo' });
+    }
+
+    // Código de 6 dígitos
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await prisma.password_reset.create({
+      data: {
+        userId: usuario.id_usuario,
+        code,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: correo,
+      subject: 'Código de recuperación de contraseña',
+      text: `Tu código de recuperación es: ${code}`,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return res.json({ ok: true, message: 'Código enviado correctamente' });
+  } catch (e) {
+    console.error('❌ Error en sendResetCode:', e);
+    return res
+      .status(500)
+      .json({ ok: false, error: 'Error enviando código' });
+  }
+}
+
+// ================== VERIFY CODE ==================
+
+// 📌 VERIFICAR CÓDIGO DE RECUPERACIÓN
+export async function verifyResetCode(req, res) {
+  try {
+    const { correo, code } = req.body;
+
+    if (!correo || !code) {
+      return res.status(400).json({ ok: false, error: "Datos incompletos" });
+    }
+
+    // Buscar usuario
+    const usuario = await prisma.usuario.findUnique({
+      where: { correo },
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ ok: false, error: "Usuario no encontrado" });
+    }
+
+    // Buscar código válido
+    const registro = await prisma.password_reset.findFirst({
+      where: {
+        userId: usuario.id_usuario,
+        code,
+        used: false,
+        expiresAt: { gte: new Date() }, // no expirado
+      },
+    });
+
+    if (!registro) {
+      return res.status(400).json({ ok: false, error: "Código inválido o expirado" });
+    }
+
+    // Marcar como usado
+    await prisma.password_reset.update({
+      where: { id_reset: registro.id_reset },
+      data: { used: true },
+    });
+
+    return res.json({ ok: true });
   } catch (err) {
-    console.error("Error LOGIN =>", err);
-    return res.status(500).json({ ok: false, error: "Error interno" });
+    console.error("❌ Error verificando código:", err);
+    return res.status(500).json({ ok: false, error: "Error de servidor" });
+  }
+}
+
+
+// 📌 RESET PASSWORD
+export async function resetPassword(req, res) {
+  try {
+    const { correo, password } = req.body;
+
+    if (!correo || !password) {
+      return res.status(400).json({ ok: false, error: "Datos incompletos" });
+    }
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { correo },
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ ok: false, error: "Usuario no encontrado" });
+    }
+
+    // 🔥 GUARDAR SIN HASH (como usas ahora)
+    await prisma.usuario.update({
+      where: { id_usuario: usuario.id_usuario },
+      data: {
+        passwordHash: password,
+      },
+    });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("❌ Error al resetear contraseña:", err);
+    return res.status(500).json({ ok: false, error: "Error de servidor" });
   }
 }
 export async function register(req, res) {

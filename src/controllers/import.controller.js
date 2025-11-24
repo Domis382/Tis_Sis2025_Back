@@ -12,25 +12,42 @@ export async function previewFile(req, res) {
 
 export async function runImport(req, res) {
   try {
-    if (!req.file) return errorResponse(res, "Archivo requerido (.csv o .xlsx)", 400);
+    if (!req.file) {
+      return errorResponse(res, "Archivo requerido (.csv o .xlsx)", 400);
+    }
 
     if (!req.user?.id_coordinador) {
       return errorResponse(res, "Falta id_coordinador (auth stub/login)", 403);
     }
 
-    const { onlyValid = true, duplicatePolicy = "omit" } = req.body;
+    // ⬇️ NUEVO: filtros/selección que manda el front
+    const {
+      onlyValid = true,
+      duplicatePolicy = "omit",
+      areaFilter,
+      nivelFilter,
+      selectedCisJson, // opcional: array JSON de CIs marcados en la UI
+    } = req.body;
+
+    const selectedCis = selectedCisJson ? JSON.parse(selectedCisJson) : null;
 
     const result = await svc.runImport({
       file: req.file,
       fileName: req.file.originalname,
-      coordinatorId: req.user.id_coordinador,   // ← ya estabas pasando coordinatorId (ok)
+      coordinatorId: req.user.id_coordinador,
       onlyValid: String(onlyValid) === "true",
       duplicatePolicy,
+      areaFilter,
+      nivelFilter,
+      selectedCis, // ⬅️ pasa selección al service
     });
 
     return successResponse(res, result, 201);
-  } catch (e) { return errorResponse(res, e.message, 400); }
+  } catch (e) {
+    return errorResponse(res, e.message, 400);
+  }
 }
+
 
 export async function downloadErrorReport(req, res) {
   try {

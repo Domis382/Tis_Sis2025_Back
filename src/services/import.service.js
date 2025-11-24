@@ -40,6 +40,16 @@ const toKey = (s) =>
     .replace(/\s+/g, "_") // espacios -> _
     .replace(/[^\w]/g, "_"); // otros símbolos -> _
 
+// Normaliza valores de celda para comparaciones (no para headers)
+function normVal(s) {
+  return String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, ""); // sin tildes
+}
+function same(a, b) { return normVal(a) === normVal(b); }
+
 // ¿en headers hay alguna variante de la clave canónica?
 function hasHeader(headers, canonical) {
   const norm = headers.map(toKey);
@@ -149,6 +159,9 @@ export async function runImport({
   coordinatorId,
   onlyValid,
   duplicatePolicy,
+  areaFilter,      // ⬅️ nuevo
+  nivelFilter,     // ⬅️ nuevo
+  selectedCis,     // ⬅️ nuevo (array de CI, opcional)
 }) {
   const { rows, headers } = await parseFile(file);
 
@@ -160,6 +173,47 @@ export async function runImport({
     throw new Error("Falta id_coordinador (auth stub/login)");
   }
 
+  // 1) Mapear TODO a formato canónico (aún sin insertar)
+  const canon = rows.map((r) => ({
+    nombres_inscrito: getFromRow(r, "nombres_inscrito"),
+    apellidos_inscrito: getFromRow(r, "apellidos_inscrito"),
+    ci_inscrito: getFromRow(r, "ci_inscrito"),
+    area: getFromRow(r, "area"),
+    nivel: getFromRow(r, "nivel"),
+    estado: getFromRow(r, "estado") ?? "ACTIVA",
+
+    // extras
+    colegio: getFromRow(r, "colegio"),
+    contacto_tutor: getFromRow(r, "contacto_tutor"),
+    unidad_educativa: getFromRow(r, "unidad_educativa"),
+    departamento: getFromRow(r, "departamento"),
+    grado_escolaridad: getFromRow(r, "grado_escolaridad"),
+    tutor_academico: getFromRow(r, "tutor_academico"),
+  }));
+
+  // 2) Aplicar filtros que vienen de la UI
+  let filtered = canon;
+  if (areaFilter)  filtered = filtered.filter((r) => same(r.area, areaFilter));
+  if (nivelFilter) filtered = filtered.filter((r) => same(r.nivel, nivelFilter));
+
+  if (Array.isArray(selectedCis) && selectedCis.length) {
+    const set = new Set(selectedCis.map((x) => String(x).trim()));
+    filtered = filtered.filter(
+      (r) => r.ci_inscrito && set.has(String(r.ci_inscrito).trim())
+    );
+  }
+
+  if (filtered.length === 0) {
+    return {
+      id_import: null,
+      total: canon.length,
+      importados: 0,
+      errores: 0,
+      filtered: 0,
+    };
+  }
+
+  // 3) Crear registro de importación
   const imp = await prisma.importaciones.create({
     data: {
       id_coordinador: Number(coordinatorId),
@@ -170,26 +224,13 @@ export async function runImport({
     },
   });
 
+  // 4) Validar + insertar SOLO lo filtrado
   let ok = 0;
   const errores = [];
 
-  for (let i = 0; i < rows.length; i++) {
+  for (let i = 0; i < filtered.length; i++) {
+    const r = filtered[i];
     const filaNum = i + 2;
-    // mapear robusto
-    const r = {
-      nombres_inscrito: getFromRow(rows[i], "nombres_inscrito"),
-      apellidos_inscrito: getFromRow(rows[i], "apellidos_inscrito"),
-      ci_inscrito: getFromRow(rows[i], "ci_inscrito"),
-      area: getFromRow(rows[i], "area"),
-      nivel: getFromRow(rows[i], "nivel"),
-      estado: getFromRow(rows[i], "estado") ?? "ACTIVA",
-      colegio: getFromRow(rows[i], "colegio"),
-      contacto_tutor: getFromRow(rows[i], "contacto_tutor"),
-      unidad_educativa: getFromRow(rows[i], "unidad_educativa"),
-      departamento: getFromRow(rows[i], "departamento"),
-      grado_escolaridad: getFromRow(rows[i], "grado_escolaridad"),
-      tutor_academico: getFromRow(rows[i], "tutor_academico"),
-    };
 
     const rowErrs = validateRow(r);
     if (rowErrs.length && onlyValid) {
@@ -231,7 +272,7 @@ export async function runImport({
           ok++;
           continue;
         }
-        // "duplicate": crea otro registro con mismo CI
+        // "duplicate" => crear nuevo registro
       }
 
       await prisma.inscritos.create({
@@ -257,11 +298,12 @@ export async function runImport({
     }
   }
 
+  // 5) Guardar resumen
   const csvErrores = buildErrorCsv(errores);
   await prisma.importaciones.update({
     where: { id_import: imp.id_import },
     data: {
-      total_registro: rows.length,
+      total_registro: canon.length,   // total leídas del archivo
       total_ok: ok,
       total_error: errores.length,
       detalle_errores: csvErrores,
@@ -270,7 +312,8 @@ export async function runImport({
 
   return {
     id_import: imp.id_import,
-    total: rows.length,
+    total: canon.length,
+    filtered: filtered.length, // cuántas intentaste importar (tras filtros)
     importados: ok,
     errores: errores.length,
   };
