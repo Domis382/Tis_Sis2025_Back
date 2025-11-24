@@ -183,7 +183,7 @@ export async function login(req, res, next) {
 
     const token = signToken(tokenPayload);
 
-    return res.json({
+    {/*return res.json({
       ok: true,
       token,
       usuario: {
@@ -195,6 +195,16 @@ export async function login(req, res, next) {
         rolInfo: rolData
       }
     });
+    */}
+    return res.json({
+  ok: true,
+  token,
+  usuario: {
+    ...userData,
+    rol: mappedRole
+  }
+});
+
   } catch (e) {
     console.error('❌ Error en login:', e);
     next(e);
