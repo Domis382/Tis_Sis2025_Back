@@ -9,6 +9,7 @@ import responsableRoutes from './responsable.routes.js';
 import evaluadorRoutes from './evaluador.routes.js';
 import inscritosRoutes from './inscritos.routes.js';
 import coordinadorRoutes from './coordinador.routes.js';
+import usuarioEvalRoutes from "./usuarioEval.routes.js";
 
 import passwordRoutes from "./password.routes.js";
 
@@ -43,9 +44,17 @@ router.use(authRoutes); // expone /api/auth/*
 // Áreas (solo Admin/Coordinador)
 router.use(
   '/areas',
-  authMiddleware(['Administrador', 'Coordinador']),
+  authMiddleware(['Administrador', 'Coordinador','Responsable de Area']),
   areaRoutes
 );
+
+//Ruta protegida usuario Evaluador
+/* router.use(
+  "/usuariosEval",
+  authorizeRole("Responsable de Area"),
+  usuarioEvalRoutes
+); */
+router.use("/usuariosEval", usuarioEvalRoutes);
 
 // Ejemplo de ruta protegida para probar credenciales
 router.get(
