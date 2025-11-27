@@ -171,3 +171,18 @@ export async function deleteResponsable(id) {
 
   return true;
 }
+
+// --- OBTENER RESPONSABLE LOGUEADO ---
+export async function getResponsableByUsuarioId(id_usuario) {
+  const responsable = await prisma.responsable_area.findUnique({
+    where: { id_usuario: BigInt(id_usuario) },
+    include: {
+      area: true,
+      usuario: true,
+    },
+  });
+
+  if (!responsable) return null;
+
+  return responsable;
+}

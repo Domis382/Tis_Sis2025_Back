@@ -1,4 +1,4 @@
-// services/usuarioEval.service.js
+// services/usuarioEval.services.js
 import * as usuarioRepo from "../repositories/usuarioEval.repository.js";
 
 export async function getAllUsuarios() {
@@ -17,7 +17,11 @@ export async function getAllUsuarios() {
 }
 
 export async function createUsuario(data) {
-  const created = await usuarioRepo.createUsuario(data);
+  
+  const created = await usuarioRepo.createUsuario({
+    ...data,
+    passwordHash: "1234567"
+  });
 
   return {
     id: created.id_usuario,
@@ -31,7 +35,6 @@ export async function createUsuario(data) {
       (created.nombre?.[0] || "") + (created.apellido?.[0] || "")
   };
 }
-
 export async function updateUsuario(id, data) {
   const updated = await usuarioRepo.updateUsuario(id, data);
 
