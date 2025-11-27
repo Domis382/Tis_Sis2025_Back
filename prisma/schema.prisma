@@ -106,20 +106,14 @@ model clasificados {
 }
 
 model coordinador_area {
-  id_coordinador        BigInt          @id @default(autoincrement())
-  nombre_coordinador    String          @db.VarChar(100)
-  apellidos_coordinador String          @db.VarChar(100)
-  id_area               BigInt
-  carnet                String?         @db.VarChar(50)
-  correo_electronico    String?         @unique
-  pass_coordinador      String?
-  telefono              String?         @db.VarChar(50)
-  usuario_coordinador   String?         @unique
-  id_usuario            BigInt?         @unique
-  administrador         administrador[]
-  area                  area            @relation(fields: [id_area], references: [id_area])
-  usuario               usuario?        @relation(fields: [id_usuario], references: [id_usuario])
-  importaciones         importaciones[]
+  id_coordinador BigInt          @id @default(autoincrement())
+  id_area        BigInt
+  carnet         String?         @db.VarChar(50)
+  id_usuario     BigInt?         @unique
+  administrador  administrador[]
+  area           area            @relation(fields: [id_area], references: [id_area])
+  usuario        usuario?        @relation(fields: [id_usuario], references: [id_usuario])
+  importaciones  importaciones[]
 }
 
 model evaluaciones {
