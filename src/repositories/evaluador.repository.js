@@ -4,7 +4,8 @@ import db from "../config/prisma.js";
 export async function findAllEvaluadores() {
   return await db.evaluador.findMany({
     include: {
-      area: true
+      area: true,
+      usuario: true,
     }
   });
 }
@@ -14,24 +15,29 @@ export async function findEvaluadorById(id) {
   return await db.evaluador.findUnique({
     where: { id_evaluador: Number(id) },
     include: {
-      area: true
+      area: true,
+      usuario: true,
     }
   });
 }
 
 // Crear evaluador
+
 export async function createEvaluador(data) {
   return await db.evaluador.create({
     data: {
       nombre_evaluado: data.nombre_evaluado,
       apellidos_evaluador: data.apellidos_evaluador,
-      id_area: Number(data.id_area)
+      id_area: Number(data.id_area),
+      id_usuario: Number(data.id_usuario) // 👈 importante
     },
     include: {
-      area: true
+      area: true,
+      usuario: true
     }
   });
 }
+
 
 // Actualizar evaluador
 export async function updateEvaluador(id, data) {
@@ -43,7 +49,8 @@ export async function updateEvaluador(id, data) {
       id_area: Number(data.id_area)
     },
     include: {
-      area: true
+      area: true,
+      usuario: true,
     }
   });
 }
@@ -51,66 +58,9 @@ export async function updateEvaluador(id, data) {
 // Eliminar evaluador
 export async function deleteEvaluador(id) {
   return await db.evaluador.delete({
-    where: { id_evaluador: Number(id) }
-  });
-}
-
-
-//se creo para la abla de evaluadores en admin 
-/*
-==========================================
-🔒 VERSIÓN ORIGINAL (Prisma + PostgreSQL)
-==========================================
-
-import prisma from '../config/prisma.js';
-
-export function findAllEvaluadores() {
-  return prisma.evaluador.findMany({
-    orderBy: { id_evaluador: 'asc' },
-    include: {
-      area: true, // para obtener el nombre del área
-    },
-  });
-}
-
-export function createEvaluador(data) {
-  return prisma.evaluador.create({
-    data: {
-      nombre_evaluado: data.nombres,
-      apellidos_evaluador: data.apellidos,
-      id_area: Number(data.id_area),
-    },
-    include: { area: true },
-  });
-}
-
-export function updateEvaluador(id, data) {
-  return prisma.evaluador.update({
     where: { id_evaluador: Number(id) },
-    data: {
-      nombre_evaluado: data.nombres,
-      apellidos_evaluador: data.apellidos,
-      id_area: Number(data.id_area),
-    },
-    include: { area: true },
+  include: {
+      usuario: true  // <- esto no es estrictamente necesario, pero útil si quieres retornar datos del usuario eliminado
+    }
   });
 }
-
-export function deleteEvaluador(id) {
-  return prisma.evaluador.delete({
-    where: { id_evaluador: Number(id) },
-  });
-}
-*/
-
-/*
-==========================================
-✅ VERSIÓN TEMPORAL (LowDB + mockData.json)
-==========================================
-*/
-
-// src/repositories/evaluadores.repository.js
-// ============================================================
-// Repositorio que maneja la persistencia de Evaluadores (LowDB)
-// ============================================================
-
