@@ -135,7 +135,7 @@ export async function login(req, res, next) {
         const resp = usuario.responsable_area;
         if (resp) {
           userData = {
-            id: Number(resp.id_responsable),
+            id: Number(resp.id_usuario),
             username: usuario.correo,
             nombre: resp.nombres_evaluador,
             apellidos: resp.apellidos,
@@ -176,13 +176,24 @@ export async function login(req, res, next) {
     console.log('✅ userData final:', userData);
     console.log('✅ rol (enum):', usuario.rol, '-> rol (string):', mappedRole);
 
-    const tokenPayload = {
+    /* const tokenPayload = {
       ...userData,
       role: mappedRole,
     };
+     */
+    
 
-    const token = signToken(tokenPayload);
 
+    const tokenPayload = {
+      id_usuario: Number(usuario.id_usuario),   // ✅ necesario para getMe
+      role: mappedRole,
+      id_area: userData.id_area ?? null,        // opcional pero útil
+      id_responsable: usuario.responsable_area
+        ? Number(usuario.responsable_area.id_responsable)
+        : null,
+    };
+
+        const token = signToken(tokenPayload);
     {/*return res.json({
       ok: true,
       token,
@@ -197,13 +208,13 @@ export async function login(req, res, next) {
     });
     */}
     return res.json({
-  ok: true,
-  token,
-  usuario: {
-    ...userData,
-    rol: mappedRole
-  }
-});
+      ok: true,
+      token,
+      usuario: {
+        ...userData,
+        rol: mappedRole
+      }
+    });
 
   } catch (e) {
     console.error('❌ Error en login:', e);
