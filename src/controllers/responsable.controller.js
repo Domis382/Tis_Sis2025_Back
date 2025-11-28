@@ -16,8 +16,7 @@ export async function getAll(req, res, next) {
 export async function create(req, res, next) {
   try {
     const creado = await responsableService.createResponsable(req.body);
-    const { pass_responsable, ...safe } = creado; // oculto pass en response
-    successResponse(res, safe, 201);
+    successResponse(res, creado, 201);
   } catch (err) {
     next(err);
   }
@@ -39,6 +38,27 @@ export async function remove(req, res, next) {
     const { id } = req.params;
     await responsableService.deleteResponsable(id);
     successResponse(res, { ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getMe(req, res, next) {
+  try {
+    console.log("req.user:", req.user);
+    const userId = req.user.id_usuario; // viene de tu middleware authMiddleware
+    const responsable = await responsableService.getResponsableByUsuarioId(userId);
+
+    if (!responsable) return errorResponse(res, "Usuario no encontrado", 404);
+
+    successResponse(res, {
+      nombres: responsable.nombres_evaluador,
+      apellidos: responsable.apellidos,
+      correo: responsable.correo_electronico,
+      area: responsable.area?.nombre_area?? "Sin área asignada",
+      estado: "Activo", // Si tienes campo estado en la tabla, úsalo
+      rol: "RESPONSABLE_DE_AREA",
+    });
   } catch (err) {
     next(err);
   }

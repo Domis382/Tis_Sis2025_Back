@@ -1,8 +1,11 @@
 //Importa el Router de Express, que se usa para definir rutas específicas de este módulo.
 import { Router } from 'express';
 import * as ctrl from '../controllers/responsable.controller.js';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 
 const router = Router();
+// NUEVO: obtener responsable logueado
+router.get('/me', authMiddleware(), ctrl.getMe);
 
 // GET /api/responsables
 router.get('/', ctrl.getAll);
