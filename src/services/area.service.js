@@ -1,5 +1,5 @@
 import * as areaRepository from '../repositories/area.repository.js';
-
+/** */
 /**
  * Obtener todas las áreas
  */
