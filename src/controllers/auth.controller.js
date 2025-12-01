@@ -409,3 +409,121 @@ export async function register(req, res) {
       .json({ ok: false, error: "Error interno al registrar" });
   }
 }
+  // ================== GET ME (Usuario Actual) ==================
+export async function getMe(req, res) {
+  try {
+    const userId = req.user?.id_usuario;
+
+    if (!userId) {
+      return res.status(401).json({
+        ok: false,
+        error: 'No autenticado'
+      });
+    }
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { id_usuario: BigInt(userId) },
+      include: {
+        administrador: true,
+        coordinador_area: true,
+        responsable_area: true,
+        evaluador: true,
+      },
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    }
+
+    if (usuario.estado !== 'ACTIVO') {
+      return res.status(403).json({ ok: false, error: 'Usuario inactivo' });
+    }
+
+    const mappedRole = ROL_MAP[usuario.rol] || usuario.rol;
+
+    let userData = {
+      id: Number(usuario.id_usuario),
+      username: usuario.correo,
+      nombre: usuario.nombre,
+      apellidos: usuario.apellido,
+      apellido: usuario.apellido,
+      email: usuario.correo,
+      id_area: null,
+      rol: mappedRole
+    };
+
+    switch (usuario.rol) {
+      case 'ADMIN': {
+        const admin = usuario.administrador;
+        if (admin) {
+          userData = {
+            ...userData,
+            id: Number(admin.id_administrador),
+            username: admin.correo_admin,
+            nombre: admin.nombre_admin,
+            apellidos: admin.apellido_admin,
+            apellido: admin.apellido_admin,
+            email: admin.correo_admin,
+            id_area: admin.id_area ? Number(admin.id_area) : null,
+          };
+        }
+        break;
+      }
+
+      case 'COORDINADOR': {
+        const coord = usuario.coordinador_area;
+        if (coord) {
+          userData = {
+            ...userData,
+            id: Number(coord.id_coordinador),
+            nombre: coord.nombre_coordinador,
+            apellidos: coord.apellidos_coordinador,
+            apellido: coord.apellidos_coordinador,
+            id_area: Number(coord.id_area),
+          };
+        }
+        break;
+      }
+
+      case 'RESPONSABLE': {
+        const resp = usuario.responsable_area;
+        if (resp) {
+          userData = {
+            ...userData,
+            id: Number(resp.id_usuario),
+            nombre: resp.nombres_evaluador,
+            apellidos: resp.apellidos,
+            apellido: resp.apellidos,
+            id_area: Number(resp.id_area),
+            email: resp.correo_electronico,
+          };
+        }
+        break;
+      }
+
+      case 'EVALUADOR': {
+        const evalua = usuario.evaluador;
+        if (evalua) {
+          userData = {
+            ...userData,
+            id: Number(evalua.id_evaluador),
+            nombre: evalua.nombre_evaluado,
+            apellidos: evalua.apellidos_evaluador,
+            apellido: evalua.apellidos_evaluador,
+            id_area: Number(evalua.id_area),
+          };
+        }
+        break;
+      }
+    }
+
+    return res.json({ ok: true, usuario: userData });
+
+  } catch (error) {
+    console.error('❌ Error en getMe:', error);
+    return res.status(500).json({
+      ok: false,
+      error: 'Error al obtener datos del usuario'
+    });
+  }
+}

@@ -7,7 +7,10 @@ import {
   sendResetCode,
   verifyResetCode,
   resetPassword,
+  getMe,
 } from "../controllers/auth.controller.js";
+
+import { authMiddleware } from "../middlewares/authMiddleware.js"; // 👈 Agregar
 
 const router = Router();
 
@@ -18,5 +21,6 @@ router.post("/auth/login", login);
 router.post("/password/forgot", sendResetCode);
 router.post("/password/verify", verifyResetCode);
 router.post("/password/reset", resetPassword);
+router.get("/auth/me", authMiddleware([]), getMe);
 
 export default router;
