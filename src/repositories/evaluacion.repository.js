@@ -60,7 +60,7 @@ export async function findResultadosClasificatoria(filters = {}) {
     const estadoClasificacion = r.clasificados[0]?.estado || null;
 
     return {
-      id: primeraEval?.id_evaluacion ?? r.id_inscritos,
+      id: r.id_inscritos,
       competidor: fullName,
       nota,
       observacion: primeraEval?.observacion || "",
