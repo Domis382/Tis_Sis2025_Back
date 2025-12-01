@@ -4,19 +4,34 @@ import { successResponse } from "../utils/response.js";
 
 export async function getResultadosClasificatoria(req, res, next) {
   try {
-    const filtros = req.query; // { idFase, idArea, idNivel, idEvaluador, ... }
-    const resultados = await evaluacionService.getResultadosClasificatoria(filtros);
+    const filtros = { ...req.query };
 
-    // successResponse(res, data, status)
+    const user = req.user || null;
+    console.log("👤 req.user en /evaluaciones:", user);
+
+    if (user && user.id_evaluador) {
+      filtros.idEvaluador = user.id_evaluador;
+    }
+
+    if (!filtros.idFase) {
+      filtros.idFase = 1;
+    }
+
+    console.log("🔎 Filtros enviados al servicio:", filtros);
+
+    const resultados =
+      await evaluacionService.getResultadosClasificatoria(filtros);
+
     return successResponse(res, resultados, 200);
   } catch (err) {
-    next(err);
+    console.error("❌ Error en getResultadosClasificatoria:", err);
+    next(err);   // 👈 ya no devolvemos el stack al front
   }
 }
 
 export async function actualizarNotas(req, res, next) {
   try {
-    const filas = req.body; // array que viene del front
+    const filas = req.body;
     const resultado = await evaluacionService.actualizarNotasEvaluaciones(filas);
 
     return successResponse(res, resultado, 200);
