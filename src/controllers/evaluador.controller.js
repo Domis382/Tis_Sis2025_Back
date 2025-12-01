@@ -49,3 +49,17 @@ export async function remove(req, res, next) {
     next(err);
   }
 }
+
+export async function listarEvaluadores(req, res, next) {
+  try {
+    const user = req.user; // coordinador autenticado
+    const filtros = {
+      idArea: user?.id_area || null,
+    };
+
+    const data = await evaluadorService.listarEvaluadores(filtros);
+    return res.json({ ok: true, data });
+  } catch (err) {
+    next(err);
+  }
+}

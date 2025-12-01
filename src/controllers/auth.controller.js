@@ -214,15 +214,26 @@ export async function login(req, res, next) {
     console.log("✅ userData final:", userData);
     console.log("✅ rol (enum):", usuario.rol, "-> rol (string):", mappedRole);
 
-    // 🔹 Payload REAL del token (lo que verá req.user)
     const tokenPayload = {
-      id_usuario: Number(usuario.id_usuario),  // usado por getMe
-      role: mappedRole,
-      id_area: id_area_token,
-      id_responsable: id_responsable_token,
-      id_coordinador: id_coordinador_token,
-      id_evaluador: id_evaluador_token,       // 👈 AHORA EXISTE
-    };
+        id_usuario: Number(usuario.id_usuario),   // para getMe
+        role: mappedRole,
+        id_area: userData.id_area ?? null,
+
+        // si fuera responsable:
+        id_responsable: usuario.responsable_area
+          ? Number(usuario.responsable_area.id_responsable)
+          : null,
+
+        // si fuera coordinador:
+        id_coordinador: usuario.coordinador_area
+          ? Number(usuario.coordinador_area.id_coordinador)
+          : null,
+
+        // 👇 ESTE es el importante para mostrar evaluaciones filtradas
+        id_evaluador: usuario.evaluador
+          ? Number(usuario.evaluador.id_evaluador)
+          : null,
+      };
 
     const token = signToken(tokenPayload);
 
@@ -482,20 +493,20 @@ export async function getMe(req, res) {
         break;
       }
 
-      case 'COORDINADOR': {
-        const coord = usuario.coordinador_area;
-        if (coord) {
+      case "COORDINADOR": {
+          const coord = usuario.coordinador_area;
           userData = {
-            ...userData,
-            id: Number(coord.id_coordinador),
-            nombre: coord.nombre_coordinador,
-            apellidos: coord.apellidos_coordinador,
-            apellido: coord.apellidos_coordinador,
-            id_area: Number(coord.id_area),
+            id: Number(usuario.id_usuario),
+            id_usuario: Number(usuario.id_usuario),
+            id_coordinador: coord ? Number(coord.id_coordinador) : null,
+            id_area: coord ? Number(coord.id_area) : null,   // 👈 importante
+            username: usuario.correo,
+            nombre: usuario.nombre,
+            apellidos: usuario.apellido,
+            email: usuario.correo,
           };
+          break;
         }
-        break;
-      }
 
       case 'RESPONSABLE': {
         const resp = usuario.responsable_area;
