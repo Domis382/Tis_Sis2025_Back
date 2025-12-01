@@ -20,16 +20,6 @@ export async function create(req, res, next) {
   }
 }
 
-/* 
-export async function create(req, res, next) {
-  try {
-    const data = await evaluadorService.createEvaluador(req.body);
-    successResponse(res, data, 201);
-  } catch (err) {
-    next(err);
-  }
-} */
-
 export async function update(req, res, next) {
   try {
     const { id } = req.params;
