@@ -48,8 +48,17 @@ export async function login(req, res, next) {
         role: role || "Administrador",
         id_area: 0,
       };
-      const token = signToken(user);
-      return res.json({ ok: true, token, user });
+
+      const token = signToken({
+        id_usuario: user.id,
+        role: user.role,
+        id_area: user.id_area,
+        id_coordinador: null,
+        id_responsable: null,
+        id_evaluador: null,
+      });
+
+      return res.json({ ok: true, token, usuario: user });
     }
 
     console.log(
@@ -92,8 +101,10 @@ export async function login(req, res, next) {
 
     const mappedRole = ROL_MAP[usuario.rol] || usuario.rol;
 
+    // 🔹 Datos base del usuario (se sobreescriben según rol)
     let userData = {
       id: Number(usuario.id_usuario),
+      id_usuario: Number(usuario.id_usuario),
       username: usuario.correo,
       nombre: usuario.nombre,
       apellidos: usuario.apellido,
@@ -101,18 +112,26 @@ export async function login(req, res, next) {
       id_area: null,
     };
 
+    // Estos se usarán para el payload del token
+    let id_area_token = null;
+    let id_responsable_token = null;
+    let id_coordinador_token = null;
+    let id_evaluador_token = null;
+
     switch (usuario.rol) {
       case "ADMIN": {
         const admin = usuario.administrador;
         if (admin) {
           userData = {
             id: Number(admin.id_administrador),
+            id_usuario: Number(usuario.id_usuario),
             username: admin.correo_admin,
             nombre: admin.nombre_admin,
             apellidos: admin.apellido_admin,
             email: admin.correo_admin,
             id_area: admin.id_area ? Number(admin.id_area) : null,
           };
+          id_area_token = admin.id_area ? Number(admin.id_area) : null;
         }
         break;
       }
@@ -120,12 +139,10 @@ export async function login(req, res, next) {
       case "COORDINADOR": {
         const coord = usuario.coordinador_area;
 
-        // Para cualquier rol, `id` será SIEMPRE el id_usuario
         userData = {
-          id: Number(usuario.id_usuario), // 👈 clave para req.user.id
-          id_usuario: Number(usuario.id_usuario), // opcional pero útil
+          id: Number(usuario.id_usuario),
+          id_usuario: Number(usuario.id_usuario),
 
-          // info extra del rol
           id_coordinador: coord ? Number(coord.id_coordinador) : null,
           id_area: coord ? Number(coord.id_area) : null,
 
@@ -134,6 +151,11 @@ export async function login(req, res, next) {
           apellidos: usuario.apellido,
           email: usuario.correo,
         };
+
+        if (coord) {
+          id_coordinador_token = Number(coord.id_coordinador);
+          id_area_token = Number(coord.id_area);
+        }
         break;
       }
 
@@ -142,12 +164,16 @@ export async function login(req, res, next) {
         if (resp) {
           userData = {
             id: Number(resp.id_usuario),
+            id_usuario: Number(usuario.id_usuario),
             username: usuario.correo,
             nombre: resp.nombres_evaluador,
             apellidos: resp.apellidos,
             id_area: Number(resp.id_area),
             email: resp.correo_electronico,
           };
+          id_area_token = Number(resp.id_area);
+          // Si tu modelo tiene id_responsable, puedes usarlo así:
+          // id_responsable_token = Number(resp.id_responsable);
         }
         break;
       }
@@ -156,20 +182,25 @@ export async function login(req, res, next) {
         const evalua = usuario.evaluador;
         if (evalua) {
           userData = {
-            id: Number(evalua.id_evaluador),
+            id: Number(evalua.id_evaluador),     // id interno de evaluador
+            id_usuario: Number(usuario.id_usuario),
             username: usuario.correo,
             nombre: evalua.nombre_evaluado,
             apellidos: evalua.apellidos_evaluador,
             id_area: Number(evalua.id_area),
             email: usuario.correo,
           };
+
+          id_evaluador_token = Number(evalua.id_evaluador); // 👈 CLAVE
+          id_area_token = Number(evalua.id_area);
         }
         break;
       }
 
-      default:
+      default: {
         userData = {
           id: Number(usuario.id_usuario),
+          id_usuario: Number(usuario.id_usuario),
           username: usuario.correo,
           nombre: usuario.nombre,
           apellidos: usuario.apellido,
@@ -177,43 +208,24 @@ export async function login(req, res, next) {
           id_area: null,
         };
         break;
+      }
     }
 
     console.log("✅ userData final:", userData);
     console.log("✅ rol (enum):", usuario.rol, "-> rol (string):", mappedRole);
 
-    /* const tokenPayload = {
-      ...userData,
-      role: mappedRole,
-    };
-     */
-    
-
-
+    // 🔹 Payload REAL del token (lo que verá req.user)
     const tokenPayload = {
-      id_usuario: Number(usuario.id_usuario),   // ✅ necesario para getMe
+      id_usuario: Number(usuario.id_usuario),  // usado por getMe
       role: mappedRole,
-      id_area: userData.id_area ?? null,        // opcional pero útil
-      id_responsable: usuario.responsable_area
-        ? Number(usuario.responsable_area.id_responsable)
-        : null,
+      id_area: id_area_token,
+      id_responsable: id_responsable_token,
+      id_coordinador: id_coordinador_token,
+      id_evaluador: id_evaluador_token,       // 👈 AHORA EXISTE
     };
 
-        const token = signToken(tokenPayload);
-    {/*return res.json({
-      ok: true,
-      token,
-      usuario: {
-        id_usuario: user.id_usuario,
-        nombre: user.nombre,
-        apellido: user.apellido,
-        correo: user.correo,
-        rol: user.rol,
-        rolInfo: rolData
-      }
-    });
-    */
-    }
+    const token = signToken(tokenPayload);
+
     return res.json({
       ok: true,
       token,
