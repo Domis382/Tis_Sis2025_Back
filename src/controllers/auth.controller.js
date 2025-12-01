@@ -7,10 +7,10 @@ const signToken = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "2h" });
 
 const ROL_MAP = {
-  ADMIN: "Administrador",
-  COORDINADOR: "Coordinador Area",
-  RESPONSABLE: "Responsable de Area",
-  EVALUADOR: "Evaluador",
+  ADMIN: "ADMIN",
+  COORDINADOR: "COORDINADOR",
+  RESPONSABLE: "RESPONSABLE",
+  EVALUADOR: "EVALUADOR",
 };
 
 // 🔹 Transporter de nodemailer (usa tu EMAIL_USER / EMAIL_PASS del .env)
@@ -184,7 +184,7 @@ export async function login(req, res, next) {
 
     /* const tokenPayload = {
       ...userData,
-      role: mappedRole,
+      role: mapped,
     };
      */
     

@@ -12,12 +12,12 @@ router.get("/_ping", (req, res) => res.json({ ok: true }));
 // Perfil del coordinador logueado
 router.get(
   "/perfil",
-  authMiddleware(["Coordinador Area"]),
+  authMiddleware(["COORDINADOR"]),
   ctrl.getPerfil
 );
 router.put(
   "/perfil",
-  authMiddleware(["Coordinador Area"]),
+  authMiddleware(["COORDINADOR"]),
   ctrl.updatePerfil
 );
 

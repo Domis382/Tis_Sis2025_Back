@@ -44,7 +44,7 @@ router.use(authRoutes); // expone /api/auth/*
 // Áreas (solo Admin/Coordinador)
 router.use(
   '/areas',
-  authMiddleware(['Administrador', 'Coordinador Area','Responsable de Area']),
+  authMiddleware(['Administrador', 'COORDINADOR','Responsable de Area']),
   areaRoutes
 );
 
