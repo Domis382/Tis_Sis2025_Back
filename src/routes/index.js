@@ -44,7 +44,7 @@ router.use(authRoutes); // expone /api/auth/*
 // Áreas (solo Admin/Coordinador)
 router.use(
   '/areas',
-  authMiddleware(['Administrador', 'Coordinador','Responsable de Area']),
+  authMiddleware(['Administrador', 'Coordinador Area','Responsable de Area']),
   areaRoutes
 );
 
@@ -76,13 +76,13 @@ router.use('/coordinador', coordinadorRoutes);
 // Importación de inscritos (estas rutas ya protegen con requireRole en su propio archivo)
 router.use('/inscritos', inscritosRoutes);
 
+router.use(passwordRoutes); // expone /api/password/*
+
 /* =========================
    404 para cualquier otra ruta bajo /api
 ========================= */
 router.use((_req, res) => {
   res.status(404).json({ ok: false, message: 'Ruta no encontrada' });
 });
-
-router.use(passwordRoutes); // expone /api/password/*
 
 export default router;
