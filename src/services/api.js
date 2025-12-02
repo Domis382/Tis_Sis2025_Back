@@ -21,3 +21,5 @@ export async function getDashboardStats() {
   if (!res.ok) throw new Error("No se pudieron cargar stats");
   return res.json(); // por ej: { ok:true, data:{ total, clasificados, reportes } }
 }
+
+
