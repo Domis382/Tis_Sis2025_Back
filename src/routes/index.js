@@ -78,6 +78,8 @@ router.use("/clasificados", clasificadosRoutes);
 
 // Importación de inscritos (estas rutas ya protegen con requireRole en su propio archivo)
 router.use('/inscritos', inscritosRoutes);
+router.use(passwordRoutes); // expone /api/password/*
+
 
 /* =========================
    404 para cualquier otra ruta bajo /api
@@ -86,6 +88,6 @@ router.use((_req, res) => {
   res.status(404).json({ ok: false, message: 'Ruta no encontrada' });
 });
 
-router.use(passwordRoutes); // expone /api/password/*
+//router.use(passwordRoutes); // expone /api/password/*
 
 export default router;
