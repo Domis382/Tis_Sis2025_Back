@@ -45,7 +45,7 @@ router.use(authRoutes); // expone /api/auth/*
 // Áreas (solo Admin/Coordinador)
 router.use(
   '/areas',
-  authMiddleware(['Administrador', 'COORDINADOR','Responsable de Area']),
+  authMiddleware(['ADMIN', 'COORDINADOR','RESPONSABLE']),
   areaRoutes
 );
 
@@ -59,7 +59,7 @@ router.use(
 // Ejemplo de ruta protegida para probar credenciales
 router.get(
   '/profile',
-  authMiddleware(['Responsable de Area', 'Administrador', 'Coordinador']),
+  authMiddleware(['RESPONSABLE', 'ADMIN', 'COORDINADOR']),
   (req, res) => {
     res.json({ ok: true, message: '¡Acceso permitido a ruta protegida!', user: req.user });
   }
