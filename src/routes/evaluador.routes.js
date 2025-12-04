@@ -1,5 +1,6 @@
 //se creo para la tabla de el evaluador de admin 
 import { Router } from 'express';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 import * as evaluadorController from '../controllers/evaluador.controller.js';
 
 const router = Router();
@@ -15,5 +16,7 @@ router.put('/:id', evaluadorController.update);
 
 // DELETE /api/evaluadores/:id
 router.delete('/:id', evaluadorController.remove);
+
+router.get('/mi-perfil', authMiddleware([]), evaluadorController.getMiPerfil);
 
 export default router;
