@@ -148,6 +148,8 @@ model fases {
   id_fases          BigInt              @id @default(autoincrement())
   nombre_fase       String              @unique @db.VarChar(50)
   descripcion       String?             @db.VarChar(255)
+  nota_minima       Int?
+  fase_final        Boolean             @default(false)
   clasificados      clasificados[]
   evaluaciones      evaluaciones[]
   listas_publicadas listas_publicadas[]
