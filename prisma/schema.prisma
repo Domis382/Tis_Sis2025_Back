@@ -101,6 +101,9 @@ model clasificados {
   fases          fases                @relation(fields: [id_fase], references: [id_fases])
   inscritos      inscritos            @relation(fields: [id_inscrito], references: [id_inscritos], onDelete: Cascade)
 
+  // Relación con las medallas asignadas a este clasificado
+  medallas       medallas_clasificados[] @relation("ClasificadoMedallas")
+
   @@unique([id_inscrito, id_fase], map: "uq_clasif_unica")
   @@index([id_fase], map: "ix_clasif_fase")
 }
@@ -148,6 +151,8 @@ model fases {
   id_fases          BigInt              @id @default(autoincrement())
   nombre_fase       String              @unique @db.VarChar(50)
   descripcion       String?             @db.VarChar(255)
+  nota_minima       Int?                // nota mínima que define quienes clasifican
+  fase_final        Boolean             @default(false)  // activo para fase final
   clasificados      clasificados[]
   evaluaciones      evaluaciones[]
   listas_publicadas listas_publicadas[]
@@ -220,6 +225,9 @@ model parametro_medallero {
   menciones        Int             @default(0)
   administrador    administrador[]
   area             area            @relation(fields: [id_area], references: [id_area])
+
+  // Relación con las medallas asignadas usando este parámetro
+  medallas         medallas_clasificados[] @relation("ParametroMedallas")
 }
 
 model responsable_area {
@@ -267,7 +275,7 @@ model archivo_anuncio {
   nombre_archivo String   @db.VarChar(255)
   url_archivo    String   @db.VarChar(500)
   tipo_archivo   String   @db.VarChar(100)
-  tamaño        BigInt?
+  tamaño         BigInt?
   orden          Int      @default(0)
   creado_en      DateTime @default(now()) @db.Timestamp(6)
   anuncio        anuncio  @relation(fields: [id_anuncio], references: [id_anuncio], onDelete: Cascade)
@@ -287,6 +295,34 @@ model anuncio_visto {
   @@unique([id_anuncio, id_usuario], map: "uq_anuncio_visto_unico")
   @@index([id_usuario])
   @@index([id_anuncio])
+}
+
+//
+// NUEVO MODELO: relación entre clasificados y medallero
+//
+model medallas_clasificados {
+  id_medalla_clasificado BigInt  @id @default(autoincrement())
+
+  // FK al clasificado que recibió la medalla
+  id_clasificado         BigInt
+  // FK al parámetro de medallero que se usó
+  id_parametro           BigInt
+
+  // tipo de medalla: ORO / PLATA / BRONCE / MENCION
+  tipo_medalla           String  @db.VarChar(10)
+
+  // nota final con la que obtuvo esa medalla
+  puntaje_final          Decimal @db.Decimal(5, 2)
+
+  // true si la medalla se dio por empate
+  es_empate              Boolean @default(false)
+
+  // relaciones
+  clasificado            clasificados        @relation("ClasificadoMedallas", fields: [id_clasificado], references: [id_clasificado], onDelete: Cascade)
+  parametro              parametro_medallero @relation("ParametroMedallas", fields: [id_parametro], references: [id_parametro], onDelete: Cascade)
+
+  // evita duplicar la misma medalla para el mismo clasificado y parámetro
+  @@unique([id_parametro, id_clasificado, tipo_medalla])
 }
 
 enum rol_t {
