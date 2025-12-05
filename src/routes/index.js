@@ -10,12 +10,7 @@ import evaluadorRoutes from './evaluador.routes.js';
 import inscritosRoutes from './inscritos.routes.js';
 import coordinadorRoutes from './coordinador.routes.js';
 import usuarioEvalRoutes from "./usuarioEval.routes.js";
-<<<<<<< HEAD
-import anuncioRoutes from "./anuncio.routes.js";
-
-=======
 import clasificadosRoutes from './clasificados.routes.js';
->>>>>>> merge/back-1
 import passwordRoutes from "./password.routes.js";
 
 // 👈 NUEVO: importa las rutas de fases
@@ -87,12 +82,8 @@ router.use('/evaluaciones', evaluacionRoutes);
 router.use('/responsables', responsableRoutes);
 router.use('/evaluadores', evaluadorRoutes);
 router.use('/coordinador', coordinadorRoutes);
-<<<<<<< HEAD
-router.use("/", anuncioRoutes);
-=======
 router.use("/usuariosEval", usuarioEvalRoutes);
 router.use("/clasificados", clasificadosRoutes);
->>>>>>> merge/back-1
 
 // Importación de inscritos (estas rutas ya protegen con requireRole en su propio archivo)
 router.use('/inscritos', inscritosRoutes);
