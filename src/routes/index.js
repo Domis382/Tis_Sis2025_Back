@@ -1,35 +1,35 @@
 // src/routes/index.js
-import { Router } from 'express';
+import { Router } from "express";
 
 // Rutas de módulos
-import authRoutes from './auth.routes.js';
-import areaRoutes from './area.routes.js';
-import evaluacionRoutes from './evaluaciones.routes.js';
-import responsableRoutes from './responsable.routes.js';
-import evaluadorRoutes from './evaluador.routes.js';
-import inscritosRoutes from './inscritos.routes.js';
-import coordinadorRoutes from './coordinador.routes.js';
+import authRoutes from "./auth.routes.js";
+import areaRoutes from "./area.routes.js";
+import evaluacionRoutes from "./evaluaciones.routes.js";
+import responsableRoutes from "./responsable.routes.js";
+import evaluadorRoutes from "./evaluador.routes.js";
+import inscritosRoutes from "./inscritos.routes.js";
+import coordinadorRoutes from "./coordinador.routes.js";
 import usuarioEvalRoutes from "./usuarioEval.routes.js";
-import clasificadosRoutes from './clasificados.routes.js';
-
+import clasificadosRoutes from "./clasificados.routes.js";
 import passwordRoutes from "./password.routes.js";
 
 // Middlewares
-import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
 /* =========================
    Rutas públicas / health
 ========================= */
+
 // /api/
-router.get('/', (_req, res) => {
-  res.json({ ok: true, message: 'API Oh! SanSi Backend funcionando ✅' });
+router.get("/", (_req, res) => {
+  res.json({ ok: true, message: "API Oh! SanSi Backend funcionando ✅" });
 });
 
 // /api/health
-router.get('/health', (_req, res) => {
-  res.json({ ok: true, status: 'UP' });
+router.get("/health", (_req, res) => {
+  res.json({ ok: true, status: "UP" });
 });
 
 /* =========================
@@ -37,55 +37,57 @@ router.get('/health', (_req, res) => {
    Nota: authRoutes ya define /auth/*
    Por eso NO le agregamos prefijo aquí.
 ========================= */
-router.use(authRoutes); // expone /api/auth/*
+
+// expone /api/auth/*
+router.use(authRoutes);
 
 /* =========================
    Rutas protegidas
 ========================= */
-// Áreas (solo Admin/Coordinador)
+
+// Áreas (solo Admin / Coordinador / Responsable de área)
 router.use(
-  '/areas',
-  authMiddleware(['ADMIN', 'COORDINADOR','RESPONSABLE']),
+  "/areas",
+  authMiddleware(["ADMIN", "COORDINADOR", "RESPONSABLE"]),
   areaRoutes
 );
 
-//Ruta protegida usuario Evaluador
-/* router.use(
-  "/usuariosEval",
-  authorizeRole("Responsable de Area"),
-  usuarioEvalRoutes
-); */
-
 // Ejemplo de ruta protegida para probar credenciales
 router.get(
-  '/profile',
-  authMiddleware(['RESPONSABLE', 'ADMIN', 'COORDINADOR']),
+  "/profile",
+  authMiddleware(["RESPONSABLE", "ADMIN", "COORDINADOR"]),
   (req, res) => {
-    res.json({ ok: true, message: '¡Acceso permitido a ruta protegida!', user: req.user });
+    res.json({
+      ok: true,
+      message: "¡Acceso permitido a ruta protegida!",
+      user: req.user,
+    });
   }
 );
 
 /* =========================
    Rutas no protegidas (o con su propio middleware interno)
 ========================= */
-router.use('/evaluaciones', evaluacionRoutes);
-router.use('/responsables', responsableRoutes);
-router.use('/evaluadores', evaluadorRoutes);
-router.use('/coordinador', coordinadorRoutes);
+
+router.use("/evaluaciones", evaluacionRoutes);
+router.use("/responsables", responsableRoutes);
+router.use("/evaluadores", evaluadorRoutes);
+router.use("/coordinador", coordinadorRoutes);
 router.use("/usuariosEval", usuarioEvalRoutes);
 router.use("/clasificados", clasificadosRoutes);
 
-
 // Importación de inscritos (estas rutas ya protegen con requireRole en su propio archivo)
-router.use('/inscritos', inscritosRoutes);
+router.use("/inscritos", inscritosRoutes);
 
-router.use(passwordRoutes); // expone /api/password/*
+// Rutas de recuperación de contraseña (password/*)
+router.use(passwordRoutes);
 
 /* =========================
    404 para cualquier otra ruta bajo /api
 ========================= */
+
 router.use((_req, res) => {
-  res.status(404).json({ ok: false, message: 'Ruta no encontrada' });
+  res.status(404).json({ ok: false, message: "Ruta no encontrada" });
 });
 
 export default router;

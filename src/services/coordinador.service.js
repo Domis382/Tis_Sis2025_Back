@@ -27,6 +27,17 @@ export async function getCoordinadorById(id) {
 // =========================
 // CREATE
 // =========================
+//
+// Espera en body (lo manda el front api/coordinador.js):
+// {
+//   nombre_coordinador,
+//   apellidos_coordinador,
+//   correo_electronico,
+//   carnet,
+//   telefono,
+//   id_area,
+//   pass_coordinador?   // opcional
+// }
 export async function createCoordinador(body) {
   const {
     nombre_coordinador,
@@ -38,9 +49,15 @@ export async function createCoordinador(body) {
     pass_coordinador,
   } = body;
 
-  if (!nombre_coordinador || !apellidos_coordinador || !correo_electronico || !id_area) {
+  if (
+    !nombre_coordinador ||
+    !apellidos_coordinador ||
+    !correo_electronico ||
+    !id_area ||
+    !carnet
+  ) {
     const e = new Error(
-      "Campos requeridos: nombre_coordinador, apellidos_coordinador, correo_electronico, id_area"
+      "Campos requeridos: nombre_coordinador, apellidos_coordinador, correo_electronico, carnet, id_area"
     );
     e.status = 400;
     throw e;
@@ -48,6 +65,7 @@ export async function createCoordinador(body) {
 
   const areaId = BigInt(id_area);
 
+  // Verificar que exista el área
   const area = await prisma.area.findUnique({
     where: { id_area: areaId },
   });
@@ -68,6 +86,7 @@ export async function createCoordinador(body) {
     throw e;
   }
 
+  // Password base (igual estilo que en responsable.service)
   const password = pass_coordinador || carnet || telefono || "123456";
 
   // 1) Crear USUARIO base con rol COORDINADOR
@@ -83,19 +102,12 @@ export async function createCoordinador(body) {
     },
   });
 
-  // 2) Crear COORDINADOR_AREA vinculado
+  // 2) Crear COORDINADOR_AREA vinculado al usuario
   const creado = await prisma.coordinador_area.create({
     data: {
       id_usuario: usuario.id_usuario,
       id_area: areaId,
       carnet,
-
-      // Mientras no borremos columnas duplicadas, las rellenamos
-      nombre_coordinador,
-      apellidos_coordinador,
-      correo_electronico,
-      telefono,
-      pass_coordinador: password,
     },
     include: {
       area: true,
@@ -109,6 +121,16 @@ export async function createCoordinador(body) {
 // =========================
 // UPDATE
 // =========================
+//
+// El front envía algo como:
+// {
+//   nombre_coordinador?,
+//   apellidos_coordinador?,
+//   correo_electronico?,
+//   telefono?,
+//   carnet?,
+//   id_area?
+// }
 export async function updateCoordinador(id, patch) {
   const idCoordinador = BigInt(id);
 
@@ -126,25 +148,22 @@ export async function updateCoordinador(id, patch) {
   const coordUpdates = {};
 
   // Campos que pertenecen a USUARIO
-  if (patch.nombre_coordinador) usuarioUpdates.nombre = patch.nombre_coordinador;
-  if (patch.apellidos_coordinador) usuarioUpdates.apellido = patch.apellidos_coordinador;
-  if (patch.correo_electronico) usuarioUpdates.correo = patch.correo_electronico;
-  if (patch.telefono) usuarioUpdates.telefono = patch.telefono;
-  if (patch.pass_coordinador) usuarioUpdates.passwordHash = patch.pass_coordinador;
+  if (patch.nombre_coordinador !== undefined)
+    usuarioUpdates.nombre = patch.nombre_coordinador;
+  if (patch.apellidos_coordinador !== undefined)
+    usuarioUpdates.apellido = patch.apellidos_coordinador;
+  if (patch.correo_electronico !== undefined)
+    usuarioUpdates.correo = patch.correo_electronico;
+  if (patch.telefono !== undefined)
+    usuarioUpdates.telefono = patch.telefono;
+  if (patch.pass_coordinador !== undefined)
+    usuarioUpdates.passwordHash = patch.pass_coordinador;
 
   // Campos propios de COORDINADOR_AREA
   if (patch.carnet !== undefined) coordUpdates.carnet = patch.carnet;
   if (patch.id_area !== undefined) coordUpdates.id_area = BigInt(patch.id_area);
 
-  // Mientras no limpiemos el schema, también actualizamos duplicados:
-  if (patch.nombre_coordinador) coordUpdates.nombre_coordinador = patch.nombre_coordinador;
-  if (patch.apellidos_coordinador)
-    coordUpdates.apellidos_coordinador = patch.apellidos_coordinador;
-  if (patch.correo_electronico) coordUpdates.correo_electronico = patch.correo_electronico;
-  if (patch.telefono) coordUpdates.telefono = patch.telefono;
-  if (patch.pass_coordinador) coordUpdates.pass_coordinador = patch.pass_coordinador;
-
-  // 1) Actualizar usuario
+  // 1) Actualizar usuario (si hay cambios)
   if (Object.keys(usuarioUpdates).length) {
     await prisma.usuario.update({
       where: { id_usuario: coord.id_usuario },
@@ -152,7 +171,7 @@ export async function updateCoordinador(id, patch) {
     });
   }
 
-  // 2) Actualizar coordinador_area
+  // 2) Actualizar coordinador_area (si hay cambios)
   const actualizado = await prisma.coordinador_area.update({
     where: { id_coordinador: idCoordinador },
     data: coordUpdates,
@@ -168,11 +187,14 @@ export async function updateCoordinador(id, patch) {
 // =========================
 // DELETE
 // =========================
+//
+// Aquí opcionalmente borramos también el usuario asociado (como en responsables)
 export async function deleteCoordinador(id) {
   const idCoordinador = BigInt(id);
 
   const coord = await prisma.coordinador_area.findUnique({
     where: { id_coordinador: idCoordinador },
+    select: { id_usuario: true },
   });
 
   if (!coord) {
@@ -181,10 +203,18 @@ export async function deleteCoordinador(id) {
     throw e;
   }
 
-  // Opcional: también podrías desactivar/borrar el usuario asociado
-  // Aquí solo borro el coordinador_area
-  await prisma.coordinador_area.delete({
-    where: { id_coordinador: idCoordinador },
+  await prisma.$transaction(async (tx) => {
+    // 1) borrar coordinador_area
+    await tx.coordinador_area.delete({
+      where: { id_coordinador: idCoordinador },
+    });
+
+    // 2) borrar usuario asociado (si existe)
+    if (coord.id_usuario) {
+      await tx.usuario.delete({
+        where: { id_usuario: coord.id_usuario },
+      });
+    }
   });
 
   return true;
@@ -207,7 +237,6 @@ export async function getPerfilCoordinadorByUsuario(idUsuario) {
   });
 }
 
-
 export async function updatePerfilCoordinadorByUsuario(idUsuario, body) {
   const coord = await prisma.coordinador_area.findUnique({
     where: { id_usuario: BigInt(idUsuario) },
@@ -224,10 +253,10 @@ export async function updatePerfilCoordinadorByUsuario(idUsuario, body) {
   const coordUpdates = {};
 
   // Datos que viven en USUARIO
-  if (body.nombre) userUpdates.nombre = body.nombre;
-  if (body.apellido) userUpdates.apellido = body.apellido;
-  if (body.correo) userUpdates.correo = body.correo;
-  if (body.telefono) userUpdates.telefono = body.telefono;
+  if (body.nombre !== undefined) userUpdates.nombre = body.nombre;
+  if (body.apellido !== undefined) userUpdates.apellido = body.apellido;
+  if (body.correo !== undefined) userUpdates.correo = body.correo;
+  if (body.telefono !== undefined) userUpdates.telefono = body.telefono;
 
   // Datos de la tabla coordinador_area
   if (body.carnet !== undefined) coordUpdates.carnet = body.carnet;
