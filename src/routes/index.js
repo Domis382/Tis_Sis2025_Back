@@ -12,6 +12,7 @@ import coordinadorRoutes from './coordinador.routes.js';
 import usuarioEvalRoutes from "./usuarioEval.routes.js";
 import clasificadosRoutes from './clasificados.routes.js';
 import passwordRoutes from "./password.routes.js";
+import anuncioRoutes from "./anuncio.routes.js";
 
 // 👈 NUEVO: importa las rutas de fases
 import fasesRoutes from './fases.routes.js';
@@ -84,6 +85,8 @@ router.use('/evaluadores', evaluadorRoutes);
 router.use('/coordinador', coordinadorRoutes);
 router.use("/usuariosEval", usuarioEvalRoutes);
 router.use("/clasificados", clasificadosRoutes);
+
+router.use("/anuncios", anuncioRoutes);
 
 // Importación de inscritos (estas rutas ya protegen con requireRole en su propio archivo)
 router.use('/inscritos', inscritosRoutes);
