@@ -1,59 +1,40 @@
 // src/repositories/anuncio.repository.js
-import prisma from "../config/prisma.js"; 
+import  prisma from "../config/prisma.js";
 
-// INSERT para anuncio del carrusel
-export async function crearAnuncioCarruselRepo({
-  titulo,
-  contenido,
-  imagen_url,
-  imagen_alt,
-  orden,
-  fecha_publicacion,
-  fecha_expiracion,
-  id_administrador = null,
-  id_area = null,
-}) {
-  return prisma.anuncio.create({
-    data: {
-      titulo,
-      contenido: contenido ?? "",
-      tipo_anuncio: "CARRUSEL",   
-      estado_anuncio: "PUBLICADO",
-      fecha_publicacion: fecha_publicacion ?? new Date(),
-      fecha_expiracion: fecha_expiracion ?? null,
-      imagen_url,
-      imagen_alt: imagen_alt ?? "",
-      orden: orden ?? 1,
-      es_destacado: true,
-      id_administrador,
-      id_area,
-    },
+export const crearAnuncioRepo = (data) =>
+  prisma.anuncio.create({ data });
+
+export const listarAnunciosRepo = () =>
+  prisma.anuncio.findMany({
+    orderBy: [{ orden: "asc" }, { fecha_publicacion: "desc" }],
   });
-}
 
-// Listar anuncios activos del carrusel
-export async function listarAnunciosCarruselActivosRepo() {
-  const hoy = new Date();
 
-  return prisma.anuncio.findMany({
+export const listarAnunciosVigentesRepo = () =>
+  prisma.anuncio.findMany({
     where: {
-      tipo_anuncio: "CARRUSEL",
-      estado_anuncio: "PUBLICADO",
+      tipo_anuncio: "SISTEMA",
+      estado_anuncio: "ACTIVO",
+      es_destacado: true,
       AND: [
         {
           OR: [
             { fecha_publicacion: null },
-            { fecha_publicacion: { lte: hoy } },
+            { fecha_publicacion: { lte: new Date() } },
           ],
         },
         {
           OR: [
             { fecha_expiracion: null },
-            { fecha_expiracion: { gte: hoy } },
+            { fecha_expiracion: { gte: new Date() } },
           ],
         },
       ],
     },
     orderBy: [{ orden: "asc" }, { fecha_publicacion: "desc" }],
   });
-}
+
+  export const eliminarAnuncioRepo = (id_anuncio) =>
+  prisma.anuncio.delete({
+    where: { id_anuncio },
+  });
