@@ -10,9 +10,17 @@ import evaluadorRoutes from './evaluador.routes.js';
 import inscritosRoutes from './inscritos.routes.js';
 import coordinadorRoutes from './coordinador.routes.js';
 import usuarioEvalRoutes from "./usuarioEval.routes.js";
+<<<<<<< HEAD
 import anuncioRoutes from "./anuncio.routes.js";
 
+=======
+import clasificadosRoutes from './clasificados.routes.js';
+>>>>>>> merge/back-1
 import passwordRoutes from "./password.routes.js";
+
+// 👈 NUEVO: importa las rutas de fases
+import fasesRoutes from './fases.routes.js';
+
 
 // Middlewares
 import { authMiddleware } from '../middlewares/authMiddleware.js';
@@ -49,13 +57,19 @@ router.use(
   areaRoutes
 );
 
+//  OPCIÓN 1: proteger fases solo para Administrador
+router.use(
+  '/fases',
+  authMiddleware(['Administrador']),
+  fasesRoutes
+);
+
 //Ruta protegida usuario Evaluador
 /* router.use(
   "/usuariosEval",
   authorizeRole("Responsable de Area"),
   usuarioEvalRoutes
 ); */
-router.use("/usuariosEval", usuarioEvalRoutes);
 
 // Ejemplo de ruta protegida para probar credenciales
 router.get(
@@ -73,10 +87,16 @@ router.use('/evaluaciones', evaluacionRoutes);
 router.use('/responsables', responsableRoutes);
 router.use('/evaluadores', evaluadorRoutes);
 router.use('/coordinador', coordinadorRoutes);
+<<<<<<< HEAD
 router.use("/", anuncioRoutes);
+=======
+router.use("/usuariosEval", usuarioEvalRoutes);
+router.use("/clasificados", clasificadosRoutes);
+>>>>>>> merge/back-1
 
 // Importación de inscritos (estas rutas ya protegen con requireRole en su propio archivo)
 router.use('/inscritos', inscritosRoutes);
+router.use(passwordRoutes); // expone /api/password/*
 
 /* =========================
    404 para cualquier otra ruta bajo /api
@@ -85,6 +105,7 @@ router.use((_req, res) => {
   res.status(404).json({ ok: false, message: 'Ruta no encontrada' });
 });
 
-router.use(passwordRoutes); // expone /api/password/*
+//router.use(passwordRoutes); // expone /api/password/*
 
 export default router;
+
