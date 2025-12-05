@@ -55,7 +55,7 @@ router.use(
 //  OPCIÓN 1: proteger fases solo para Administrador
 router.use(
   '/fases',
-  authMiddleware(['Administrador']),
+  authMiddleware(['Administrador','Coordinador','Responsable de Area']),
   fasesRoutes
 );
 
