@@ -6,6 +6,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import routes from './routes/index.js';
 import prisma from './config/prisma.js';
+import anuncioRoutes from "./routes/anuncio.routes.js";
+
+
 
 // 👇 Soporta ambos tipos de export del errorHandler
 import * as errorMod from './middlewares/errorHandler.js';
@@ -41,6 +44,9 @@ app.use(express.urlencoded({ extended: false }));
 
 //  Rutas API 
 app.use('/api', routes);
+
+app.use("/api/anuncios", anuncioRoutes);
+
 
 //  Health 
 app.get('/', (_req, res) => res.send('API OK'));
