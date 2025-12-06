@@ -1,5 +1,4 @@
 // src/services/inscritos.service.js
-
 import prisma from "../config/prisma.js";
 
 /**
@@ -13,7 +12,8 @@ import prisma from "../config/prisma.js";
  *  - soloSinEvaluador
  *
  * user (req.user):
- *  - puede traer id_area (del coordinador) -> filtramos por esa área por defecto
+ *  - SOLO se usa en otras operaciones (como asignar inscritos),
+ *    NO para filtrar el listado por área.
  */
 export async function listarInscritos(filtros = {}, user = null) {
   const {
@@ -26,21 +26,22 @@ export async function listarInscritos(filtros = {}, user = null) {
 
   const where = {};
 
-  // Área: si no viene por query, usamos la del coordinador (si existe)
-  const areaId = area || user?.id_area;
-  if (areaId) {
-    where.id_area = BigInt(areaId);
+  // 🔹 Área: SOLO si viene en query param
+  if (area) {
+    where.id_area = BigInt(area);
   }
 
+  // 🔹 Nivel: en tu BD está como grado_escolaridad (texto)
   if (nivel) {
-    where.id_nivel = BigInt(nivel);
+    where.grado_escolaridad = nivel;
   }
 
+  // 🔹 Estado (texto: ACTIVA, DESCLASIFICADA, etc.)
   if (estado) {
-    // Debe coincidir con tu enum estado_inscripcion_t (ACTIVA, DESCLASIFICADA, etc.)
     where.estado = estado;
   }
 
+  // 🔹 Búsqueda por texto
   if (search && search.trim()) {
     const s = search.trim();
     where.OR = [
@@ -52,8 +53,8 @@ export async function listarInscritos(filtros = {}, user = null) {
     ];
   }
 
+  // 🔹 Solo sin evaluador
   if (soloSinEvaluador === "1" || soloSinEvaluador === "true") {
-    // Solo inscritos que aún no tienen NINGUNA evaluación registrada
     where.evaluaciones = { none: {} };
   }
 
@@ -61,7 +62,7 @@ export async function listarInscritos(filtros = {}, user = null) {
     where,
     include: {
       area: true,
-      nivel: true,
+      //nivel: true,
       evaluaciones: {
         include: {
           evaluador: {
@@ -72,7 +73,7 @@ export async function listarInscritos(filtros = {}, user = null) {
     },
     orderBy: [
       { id_area: "asc" },
-      { id_nivel: "asc" },
+      //{ id_nivel: "asc" },
       { apellidos_inscrito: "asc" },
       { nombres_inscrito: "asc" },
     ],
@@ -85,7 +86,8 @@ export async function listarInscritos(filtros = {}, user = null) {
 
     if (primeraEval?.evaluador) {
       const ev = primeraEval.evaluador;
-      evaluadorNombre = `${ev.nombre_evaluado} ${ev.apellidos_evaluador}`.trim();
+      evaluadorNombre =
+        `${ev.nombre_evaluado} ${ev.apellidos_evaluador}`.trim();
     }
 
     return {
@@ -98,8 +100,7 @@ export async function listarInscritos(filtros = {}, user = null) {
       estado: row.estado,
       id_area: Number(row.id_area),
       area: row.area?.nombre_area ?? null,
-      id_nivel: Number(row.id_nivel),
-      nivel: row.nivel?.nombre_nivel ?? null,
+      nivel: row.grado_escolaridad || null,
       evaluador: evaluadorNombre,
     };
   });
@@ -115,7 +116,7 @@ export async function listarInscritos(filtros = {}, user = null) {
 export async function asignarInscritosAEvaluador(
   idEvaluador,
   idsInscritos,
-  user = null
+  user = null // 👈 ya no usamos el área del coordinador para restringir
 ) {
   if (!idEvaluador) {
     const e = new Error("idEvaluador es obligatorio");
@@ -131,9 +132,10 @@ export async function asignarInscritosAEvaluador(
 
   const idEvalBig = BigInt(idEvaluador);
 
-  // 1) Verificar evaluador
+  // 1) Verificar evaluador (incluyendo su área)
   const evaluador = await prisma.evaluador.findUnique({
     where: { id_evaluador: idEvalBig },
+    include: { area: true },
   });
 
   if (!evaluador) {
@@ -142,18 +144,7 @@ export async function asignarInscritosAEvaluador(
     throw e;
   }
 
-  // 2) Si el coordinador tiene área, no puede asignar a evaluadores de otra área
-  if (user?.id_area) {
-    if (Number(evaluador.id_area) !== Number(user.id_area)) {
-      const e = new Error(
-        "No puedes asignar inscritos a un evaluador de otra área"
-      );
-      e.status = 403;
-      throw e;
-    }
-  }
-
-  // 3) Buscar inscritos
+  // 2) Buscar inscritos
   const idsBig = idsInscritos.map((id) => BigInt(id));
 
   const inscritos = await prisma.inscritos.findMany({
@@ -167,21 +158,19 @@ export async function asignarInscritosAEvaluador(
     throw e;
   }
 
-  // Si el coordinador tiene área, validar que todos los inscritos sean de su área
-  if (user?.id_area) {
-    const mismatch = inscritos.find(
-      (i) => Number(i.id_area) !== Number(user.id_area)
+  // 🔹 OPCIONAL: validar que todos los inscritos sean del MISMO área que el evaluador
+  const mismatch = inscritos.find(
+    (i) => Number(i.id_area) !== Number(evaluador.id_area)
+  );
+  if (mismatch) {
+    const e = new Error(
+      "Hay inscritos que no pertenecen al área del evaluador seleccionado"
     );
-    if (mismatch) {
-      const e = new Error(
-        "Hay inscritos que no pertenecen al área del coordinador"
-      );
-      e.status = 403;
-      throw e;
-    }
+    e.status = 403;
+    throw e;
   }
 
-  // 4) Determinar fase: intentamos "CLASIFICATORIA"; si no existe, usamos la primera
+  // 3) Determinar fase: intentamos "CLASIFICATORIA"; si no existe, usamos la primera
   let fase = await prisma.fases.findFirst({
     where: { nombre_fase: "CLASIFICATORIA" },
   });
@@ -198,7 +187,7 @@ export async function asignarInscritosAEvaluador(
 
   const idFase = fase.id_fases;
 
-  // 5) Crear / asegurar evaluaciones por inscrito-evaluador-fase
+  // 4) Crear / asegurar evaluaciones por inscrito-evaluador-fase
   await prisma.$transaction(
     idsBig.map((idInscrito) =>
       prisma.evaluaciones.upsert({
@@ -231,3 +220,4 @@ export async function asignarInscritosAEvaluador(
     idFase: Number(idFase),
   };
 }
+

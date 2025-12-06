@@ -14,11 +14,18 @@ import { successResponse } from "../utils/response.js";
  */
 export async function listarInscritos(req, res, next) {
   try {
-    const filtros = req.query;
-    const user = req.user || null; // viene de requireRole
+    const filtros = {
+      area: req.query.area || "",
+      nivel: req.query.nivel || "",
+      estado: req.query.estado || "",
+      search: req.query.search || "",
+      soloSinEvaluador: req.query.soloSinEvaluador || "",
+    };
+
+    const user = req.user || null; // por si luego lo necesitas en otros servicios
 
     const data = await inscritosService.listarInscritos(filtros, user);
-    return successResponse(res, data, 200);
+    return successResponse(res, data);
   } catch (err) {
     next(err);
   }
@@ -26,11 +33,6 @@ export async function listarInscritos(req, res, next) {
 
 /**
  * POST /api/inscritos/asignar-evaluador
- * Body:
- *  {
- *    idEvaluador: number,
- *    idsInscritos: number[]
- *  }
  */
 export async function asignarInscritosAEvaluador(req, res, next) {
   try {
