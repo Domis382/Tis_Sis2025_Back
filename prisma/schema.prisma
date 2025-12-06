@@ -7,6 +7,37 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model usuario {
+  id_usuario       BigInt            @id @default(autoincrement())
+  nombre           String            @db.VarChar(150)
+  apellido         String            @db.VarChar(150)
+  correo           String            @unique @db.VarChar(150)
+  passwordHash     String            @db.VarChar(255)
+  telefono         String?           @db.VarChar(50)
+  fechaNacimiento  DateTime?
+  rol              rol_t
+  estado           estado_usuario_t  @default(ACTIVO)
+  creado_en        DateTime          @default(now())
+  administrador    administrador?
+  anuncioVistos    anuncio_visto[]
+  coordinador_area coordinador_area?
+  evaluador        evaluador?
+  password_resets  password_reset[]
+  responsable_area responsable_area?
+}
+
+model password_reset {
+  id_reset  BigInt   @id @default(autoincrement())
+  userId    BigInt
+  code      String   @db.VarChar(6)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  usuario   usuario  @relation(fields: [userId], references: [id_usuario])
+
+  @@index([userId])
+  @@index([code])
+}
+
 model administrador {
   id_administrador    BigInt               @id @default(autoincrement())
   nombre_admin        String               @db.VarChar(100)
@@ -19,17 +50,21 @@ model administrador {
   id_parametro        BigInt?
   id_listas           BigInt?
   id_auditoria        BigInt?
+  id_usuario          BigInt?              @unique
   area                area?                @relation(fields: [id_area], references: [id_area])
   coordinador_area    coordinador_area?    @relation(fields: [id_coordinador], references: [id_coordinador])
   listas_publicadas   listas_publicadas?   @relation(fields: [id_listas], references: [id_listas])
   parametro_medallero parametro_medallero? @relation(fields: [id_parametro], references: [id_parametro])
+  usuario             usuario?             @relation(fields: [id_usuario], references: [id_usuario])
   auditoria           auditoria?           @relation(fields: [id_auditoria], references: [id_auditoria], map: "fk_admin_auditoria")
+  anuncios            anuncio[]
 }
 
 model area {
   id_area             BigInt               @id @default(autoincrement())
   nombre_area         String               @unique @db.VarChar(100)
   administrador       administrador[]
+  anuncios            anuncio[]
   coordinador_area    coordinador_area[]
   evaluador           evaluador[]
   inscritos           inscritos[]
@@ -59,28 +94,29 @@ model auditoria {
 }
 
 model clasificados {
-  id_clasificado BigInt               @id @default(autoincrement())
+  id_clasificado BigInt                  @id @default(autoincrement())
   id_inscrito    BigInt
   id_fase        BigInt
   estado         estado_clasificado_t
-  fases          fases                @relation(fields: [id_fase], references: [id_fases])
-  inscritos      inscritos            @relation(fields: [id_inscrito], references: [id_inscritos], onDelete: Cascade)
+  fases          fases                   @relation(fields: [id_fase], references: [id_fases])
+  inscritos      inscritos               @relation(fields: [id_inscrito], references: [id_inscritos], onDelete: Cascade)
+  medallas       medallas_clasificados[] @relation("ClasificadoMedallas")
 
   @@unique([id_inscrito, id_fase], map: "uq_clasif_unica")
   @@index([id_fase], map: "ix_clasif_fase")
 }
 
 model coordinador_area {
-  id_coordinador        BigInt          @id @default(autoincrement())
-  nombre_coordinador    String          @db.VarChar(100)
-  apellidos_coordinador String          @db.VarChar(100)
-  id_area               BigInt
-  administrador         administrador[]
-  area                  area            @relation(fields: [id_area], references: [id_area])
-  importaciones         importaciones[]
+  id_coordinador BigInt          @id @default(autoincrement())
+  id_area        BigInt
+  carnet         String?         @db.VarChar(50)
+  id_usuario     BigInt?         @unique
+  administrador  administrador[]
+  area           area            @relation(fields: [id_area], references: [id_area])
+  usuario        usuario?        @relation(fields: [id_usuario], references: [id_usuario])
+  importaciones  importaciones[]
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model evaluaciones {
   id_evaluacion BigInt    @id @default(autoincrement())
   id_inscrito   BigInt
@@ -103,20 +139,23 @@ model evaluador {
   nombre_evaluado     String         @db.VarChar(100)
   apellidos_evaluador String         @db.VarChar(100)
   id_area             BigInt
+  id_usuario          BigInt?        @unique
   evaluaciones        evaluaciones[]
   area                area           @relation(fields: [id_area], references: [id_area])
+  usuario             usuario?       @relation(fields: [id_usuario], references: [id_usuario])
 }
 
 model fases {
   id_fases          BigInt              @id @default(autoincrement())
   nombre_fase       String              @unique @db.VarChar(50)
   descripcion       String?             @db.VarChar(255)
+  nota_minima       Int?
+  fase_final        Boolean             @default(false)
   clasificados      clasificados[]
   evaluaciones      evaluaciones[]
   listas_publicadas listas_publicadas[]
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model importaciones {
   id_import        BigInt           @id @default(autoincrement())
   id_coordinador   BigInt
@@ -127,6 +166,7 @@ model importaciones {
   total_error      Int              @default(0)
   detalle_errores  String?
   coordinador_area coordinador_area @relation(fields: [id_coordinador], references: [id_coordinador])
+  inscritos        inscritos[]
 
   @@index([id_coordinador, fecha_hora], map: "ix_import_coord_fecha")
 }
@@ -139,9 +179,17 @@ model inscritos {
   id_nivel           BigInt
   id_area            BigInt
   estado             estado_inscripcion_t @default(ACTIVA)
+  id_import          BigInt?
+  colegio            String?              @db.VarChar(150)
+  contacto_tutor     String?              @db.VarChar(50)
+  unidad_educativa   String?              @db.VarChar(150)
+  departamento       String?              @db.VarChar(50)
+  grado_escolaridad  String?              @db.VarChar(50)
+  tutor_academico    String?              @db.VarChar(150)
   clasificados       clasificados[]
   evaluaciones       evaluaciones[]
   area               area                 @relation(fields: [id_area], references: [id_area])
+  importaciones      importaciones?       @relation(fields: [id_import], references: [id_import])
   nivel              nivel                @relation(fields: [id_nivel], references: [id_nivel])
 
   @@index([id_area, id_nivel], map: "ix_inscritos_area_nivel")
@@ -166,27 +214,109 @@ model nivel {
   inscritos    inscritos[]
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model parametro_medallero {
-  id_parametro     BigInt          @id @default(autoincrement())
-  id_area          BigInt          @unique
-  cantidad_oros    Int             @default(1)
-  cantidad_platas  Int             @default(1)
-  cantidad_bronces Int             @default(1)
-  menciones        Int             @default(0)
+  id_parametro     BigInt                  @id @default(autoincrement())
+  id_area          BigInt                  @unique
+  cantidad_oros    Int                     @default(1)
+  cantidad_platas  Int                     @default(1)
+  cantidad_bronces Int                     @default(1)
+  menciones        Int                     @default(0)
   administrador    administrador[]
-  area             area            @relation(fields: [id_area], references: [id_area])
+  medallas         medallas_clasificados[] @relation("ParametroMedallas")
+  area             area                    @relation(fields: [id_area], references: [id_area])
 }
 
 model responsable_area {
-  id_responsable      BigInt @id @default(autoincrement())
-  nombres_evaluador   String @db.VarChar(100)
-  apellidos           String @db.VarChar(100)
-  correo_electronico  String @unique @db.VarChar(150)
-  usuario_responsable String @unique @db.VarChar(60)
-  pass_responsable    String @db.VarChar(200)
-  id_area             BigInt
-  area                area   @relation(fields: [id_area], references: [id_area])
+  id_responsable     BigInt   @id @default(autoincrement())
+  nombres_evaluador  String   @db.VarChar(100)
+  apellidos          String   @db.VarChar(100)
+  correo_electronico String   @unique @db.VarChar(150)
+  id_area            BigInt
+  id_usuario         BigInt?  @unique
+  area               area     @relation(fields: [id_area], references: [id_area])
+  usuario            usuario? @relation(fields: [id_usuario], references: [id_usuario])
+}
+
+model anuncio {
+  id_anuncio        BigInt            @id @default(autoincrement())
+  titulo            String            @db.VarChar(200)
+  contenido         String
+  tipo_anuncio      tipo_anuncio_t    @default(GENERAL)
+  estado_anuncio    estado_anuncio_t  @default(ACTIVO)
+  fecha_publicacion DateTime?         @db.Timestamp(6)
+  fecha_expiracion  DateTime?         @db.Timestamp(6)
+  id_administrador  BigInt?
+  imagen_url        String?           @db.VarChar(500)
+  imagen_alt        String?           @db.VarChar(200)
+  es_destacado      Boolean           @default(false)
+  orden             Int               @default(0)
+  creado_en         DateTime          @default(now()) @db.Timestamp(6)
+  actualizado_en    DateTime          @default(now()) @db.Timestamp(6)
+  id_area           BigInt?
+  administrador     administrador?    @relation(fields: [id_administrador], references: [id_administrador])
+  area              area?             @relation(fields: [id_area], references: [id_area])
+  anuncioVistos     anuncio_visto[]
+  archivos_anuncio  archivo_anuncio[]
+
+  @@index([estado_anuncio])
+  @@index([tipo_anuncio])
+  @@index([fecha_publicacion])
+  @@index([es_destacado])
+  @@index([id_area])
+}
+
+model archivo_anuncio {
+  id_archivo     BigInt   @id @default(autoincrement())
+  id_anuncio     BigInt
+  nombre_archivo String   @db.VarChar(255)
+  url_archivo    String   @db.VarChar(500)
+  tipo_archivo   String   @db.VarChar(100)
+  tamaño        BigInt?
+  orden          Int      @default(0)
+  creado_en      DateTime @default(now()) @db.Timestamp(6)
+  anuncio        anuncio  @relation(fields: [id_anuncio], references: [id_anuncio], onDelete: Cascade)
+
+  @@index([id_anuncio])
+  @@index([tipo_archivo])
+}
+
+model anuncio_visto {
+  id_visto   BigInt   @id @default(autoincrement())
+  id_anuncio BigInt
+  id_usuario BigInt
+  visto_en   DateTime @default(now()) @db.Timestamp(6)
+  anuncio    anuncio  @relation(fields: [id_anuncio], references: [id_anuncio], onDelete: Cascade)
+  usuario    usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+
+  @@unique([id_anuncio, id_usuario], map: "uq_anuncio_visto_unico")
+  @@index([id_usuario])
+  @@index([id_anuncio])
+}
+
+model medallas_clasificados {
+  id_medalla_clasificado BigInt              @id @default(autoincrement())
+  id_clasificado         BigInt
+  id_parametro           BigInt
+  tipo_medalla           String              @db.VarChar(10)
+  puntaje_final          Decimal             @db.Decimal(5, 2)
+  es_empate              Boolean             @default(false)
+  clasificado            clasificados        @relation("ClasificadoMedallas", fields: [id_clasificado], references: [id_clasificado], onDelete: Cascade, onUpdate: NoAction)
+  parametro              parametro_medallero @relation("ParametroMedallas", fields: [id_parametro], references: [id_parametro], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([id_parametro, id_clasificado, tipo_medalla], map: "uk_parametro_clasificado_medalla")
+}
+
+enum rol_t {
+  ADMIN
+  COORDINADOR
+  RESPONSABLE
+  EVALUADOR
+  COMPETIDOR
+}
+
+enum estado_usuario_t {
+  ACTIVO
+  INACTIVO
 }
 
 enum actor_tipo_t {
@@ -222,4 +352,20 @@ enum tipo_lista_t {
   CERTIFICADOS
   CEREMONIA
   PUBLICACION
+}
+
+enum tipo_anuncio_t {
+  GENERAL
+  URGENTE
+  IMPORTANTE
+  EVENTO
+  NOTICIA
+  SISTEMA
+}
+
+enum estado_anuncio_t {
+  BORRADOR
+  ACTIVO
+  INACTIVO
+  EXPIRADO
 }

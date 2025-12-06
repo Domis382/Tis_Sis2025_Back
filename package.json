@@ -1,24 +1,36 @@
 {
   "name": "back",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend OhSanSi (Express + Prisma o LowDB)",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.16.3",
+    "@prisma/client": "^6.18.0",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "csv-parse": "^6.1.0",
     "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
     "express": "^5.1.0",
-    "prisma": "^6.16.3"
+    "express-validator": "^7.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "lowdb": "^7.0.1",
+    "nodemailer": "^7.0.10"
   },
   "devDependencies": {
-    "nodemon": "^3.0.3"
+    "jest": "^30.2.0",
+    "multer": "^2.0.2",
+    "nodemon": "^3.0.3",
+    "prisma": "^6.18.0",
+    "supertest": "^7.1.4"
   }
 }
