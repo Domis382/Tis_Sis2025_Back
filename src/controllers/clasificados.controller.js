@@ -1,26 +1,35 @@
+// src/controllers/clasificados.controller.js
 import * as clasificadosService from "../services/clasificados.service.js";
-import { successResponse } from "../utils/response.js";
 
+// POST /api/clasificados/cargar
 export async function uploadExcel(req, res, next) {
   try {
     const { rows } = req.body;
 
-    if (!rows || !Array.isArray(rows)) {
-      return res.status(400).json({ ok: false, message: "Formato inválido" });
+    if (!Array.isArray(rows) || !rows.length) {
+      return res
+        .status(400)
+        .json({ ok: false, message: "No se enviaron filas de clasificados." });
     }
 
     const data = await clasificadosService.createOrUpdateClasificados(rows);
 
-    successResponse(res, data, 201);
+    return res.json({
+      ok: true,
+      message: "Clasificados cargados correctamente.",
+      data,
+    });
   } catch (err) {
     next(err);
   }
 }
 
+// GET /api/clasificados
 export async function getAll(req, res, next) {
   try {
-    const data = await clasificadosService.getAllClasificados();
-    successResponse(res, data);
+    const rows = await clasificadosService.getAllClasificados();
+    // El front ya está preparado para recibir array directo o {data:...}
+    return res.json({ data: rows });
   } catch (err) {
     next(err);
   }
