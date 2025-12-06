@@ -1,6 +1,7 @@
 //se creo para la tabla de evaluador en tabla de admin
 import * as evaluadorService from '../services/evaluador.service.js';
 import { successResponse } from '../utils/response.js';
+import prisma from '../config/prisma.js';
 
 export async function getAll(req, res, next) {
   try {
@@ -49,6 +50,30 @@ export async function listarEvaluadores(req, res, next) {
 
     const data = await evaluadorService.listarEvaluadores(filtros);
     return res.json({ ok: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+export async function getMiPerfil(req, res, next) {
+  try {
+    const userId = req.user?.id_usuario; // viene del token
+    if (!userId) return res.status(401).json({ ok: false, message: "No autenticado" });
+
+    const evaluador = await prisma.evaluador.findFirst({
+      where: { id_usuario: BigInt(userId) },
+      include: {
+        area: {
+          select: { id_area: true, nombre_area: true }
+        }
+      }
+    });
+
+    if (!evaluador) {
+      return res.status(404).json({ ok: false, message: "Evaluador no encontrado" });
+    }
+
+    res.json({ ok: true, evaluador });
+
   } catch (err) {
     next(err);
   }

@@ -1,29 +1,30 @@
 // src/routes/evaluaciones.routes.js
 import { Router } from "express";
-import * as evaluacionController from "../controllers/evaluacion.controller.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
+import {
+  getResultadosClasificatoria,
+  getHistorialEvaluaciones,
+  actualizarNotaIndividual,
+  actualizarNotas
+} from "../controllers/evaluacion.controller.js";
 
 const router = Router();
 
 // GET /api/evaluaciones
-router.get(
-  "/",
-  authMiddleware(["EVALUADOR", "COORDINADOR", "ADMIN"]),
-  evaluacionController.getResultadosClasificatoria
-);
+// Obtiene todas las evaluaciones (con filtros opcionales)
+router.get("/", getResultadosClasificatoria);
 
 // GET /api/evaluaciones/historial
-router.get(
-  "/historial",
-  authMiddleware(["EVALUADOR", "COORDINADOR", "ADMIN"]),
-  evaluacionController.getHistorialEvaluaciones
-);
+// Obtiene el historial de cambios
+router.get("/historial", getHistorialEvaluaciones);
+
+// PATCH /api/evaluaciones/:id
+// Actualiza UNA SOLA evaluación (para guardar en tiempo real)
+// Usar este endpoint cuando el usuario edita una celda
+router.patch("/:id", actualizarNotaIndividual);
 
 // PUT /api/evaluaciones
-router.put(
-  "/",
-  authMiddleware(["EVALUADOR", "COORDINADOR", "ADMIN"]),
-  evaluacionController.actualizarNotas
-);
+// Actualiza múltiples evaluaciones en lote
+// Se mantiene para compatibilidad con el botón "Guardar cambios"
+router.put("/", actualizarNotas);
 
 export default router;
