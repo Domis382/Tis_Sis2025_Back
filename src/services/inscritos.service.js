@@ -229,7 +229,7 @@ export async function asignarInscritosAEvaluador(
 export async function getInscritosStats() {
   const [totalInscritos, totalClasificados] = await Promise.all([
     prisma.inscritos.count(),
-    prisma.clasificados.count(),   // 👈 LOS CLASIFICADOS ESTÁN AQUÍ
+    prisma.clasificados.count(),   // 👈 LOS CLASIFICADOS ESTÁN AQUÍ.
   ]);
 
   return {
