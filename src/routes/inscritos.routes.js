@@ -29,7 +29,7 @@ r.get("/", requireRole("COORDINADOR"), inscritosCtrl.listarInscritos);
 // stats para el dashboard de importar inscritos
 r.get("/stats", requireRole("COORDINADOR"), inscritosCtrl.getInscritosStats);
 
-// Asignar un lote de inscritos a un evaluador
+// Asignar un lote de inscritos a un evaluador.
 r.post(
   "/asignar-evaluador",
   requireRole("COORDINADOR"),

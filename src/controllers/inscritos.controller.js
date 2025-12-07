@@ -52,22 +52,11 @@ export async function asignarInscritosAEvaluador(req, res, next) {
 }
 
 // =================== STATS DASHBOARD ===================
-export async function getInscritosStats(req, res) {
+export async function getInscritosStats(req, res, next) {
   try {
-    const stats = await inscritosService.getInscritosStats();
-    return res.json({
-      ok: true,
-      data: {
-        total: stats.totalInscritos,
-        clasificados: stats.clasificados,
-        reportes: 0, // Eliminado por tu decisión de grupo
-      },
-    });
-  } catch (e) {
-    console.error("Error getInscritosStats:", e);
-    return res.status(500).json({
-      ok: false,
-      error: "Error obteniendo estadísticas",
-    });
+    const data = await inscritosService.getInscritosStats();
+    return res.json({ ok: true, data });
+  } catch (err) {
+    next(err);
   }
 }
