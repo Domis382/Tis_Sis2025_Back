@@ -1,117 +1,227 @@
 // src/controllers/evaluacion.controller.js
 import * as evaluacionService from "../services/evaluacion.service.js";
-import { successResponse } from "../utils/response.js";
 
-/**
- * GET /api/evaluaciones
- * Obtiene la lista de evaluaciones para la clasificatoria
- */
+function ok(res, data, code = 200) {
+  return res.status(code).json({ ok: true, data });
+}
+
+const norm = (s) =>
+  (s ?? "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+
+/* ============================================================
+   GET /api/evaluaciones   (Listado de evaluaciones)
+   ============================================================ */
 export async function getResultadosClasificatoria(req, res, next) {
   try {
-    const filtros = { ...req.query };
+    const usr = req.user || {};
+    const rol = norm(usr.rol ?? usr.role);
+    const id_usuario = usr.id_usuario;
 
-    const user = req.user || null;
-    console.log("👤 req.user en /evaluaciones:", user);
+    const q = req.query || {};
+    const { idFase, nivel, estado, search } = q;
 
-    if (user && user.id_evaluador) {
-      filtros.idEvaluador = user.id_evaluador;
+    console.log("🟦[CTRL:getResultados] user:", usr);
+    console.log("🟦[CTRL:getResultados] query:", q);
+
+    let idEvaluador = usr?.id_evaluador ? Number(usr.id_evaluador) : null;
+
+    if (!idEvaluador && q?.idEvaluador) {
+      const n = Number(q.idEvaluador);
+      if (Number.isFinite(n)) idEvaluador = n;
     }
 
-    if (!filtros.idFase) {
-      filtros.idFase = 1;
+    if (!idEvaluador) {
+      try {
+        idEvaluador = await evaluacionService.resolveIdEvaluadorByUsuario({
+          rol, id_usuario
+        });
+      } catch (e) {
+        console.log("🟨[CTRL:getResultados] resolveIdEvaluador error:", e?.message);
+      }
     }
 
-    console.log("🔎 Filtros enviados al servicio:", filtros);
+    console.log("🟦[CTRL:getResultados] rol:", rol, " -> idEvaluador:", idEvaluador);
 
-    const resultados =
-      await evaluacionService.getResultadosClasificatoria(filtros);
+    const data = await evaluacionService.findResultadosClasificatoria({
+      idFase: idFase ?? null,
+      idNivel: nivel ?? null,
+      estado: estado ?? null,
+      search: search ?? null,
+      idEvaluador,
+    });
 
-    return successResponse(res, resultados, 200);
+    console.log("🟦[CTRL:getResultados] rows:", Array.isArray(data) ? data.length : "n/a");
+    return ok(res, data, 200);
+
   } catch (err) {
-    console.error("❌ Error en getResultadosClasificatoria:", err);
-    next(err);   // 👈 ya no devolvemos el stack al front
-  }
-}
-
-/**
- * PATCH /api/evaluaciones/:id
- * Actualiza UNA SOLA evaluación (nota y/o observación)
- * Se usa para guardar en tiempo real cuando el usuario edita una celda
- */
-export async function actualizarNotaIndividual(req, res, next) {
-  try {
-    const { id } = req.params;
-    const datos = req.body; // { nota, observacion }
-    
-    // Obtener info del usuario autenticado (si existe)
-    const usuarioInfo = {
-      id: req.user?.id_usuario || req.user?.id,
-      nombre: req.user?.nombre || "Sistema",
-      rol: req.user?.rol || "EVALUADOR"
-    };
-
-    const resultado = await evaluacionService.actualizarNotaIndividual(
-      id, 
-      datos,
-      usuarioInfo
-    );
-
-    return successResponse(
-      res, 
-      resultado, 
-      200
-    );
-  } catch (err) {
-    console.error("❌ Error en actualizarNotaIndividual:", err);
+    console.log("🟥[CTRL:getResultados] error:", err);
     next(err);
   }
 }
 
-/**
- * PUT /api/evaluaciones
- * Actualiza múltiples evaluaciones en lote
- * Se mantiene para compatibilidad con el botón "Guardar cambios"
- */
-export async function actualizarNotas(req, res, next) {
-  try {
-    const filas = req.body; // array que viene del front
-    
-    console.log("📥 Datos recibidos para actualizar:", filas);
-    
-    // Obtener info del usuario autenticado (puede no existir si no hay middleware de auth)
-    const usuarioInfo = {
-      id: req.user?.id_usuario || req.user?.id || 5, // ID por defecto del usuario demo
-      nombre: req.user?.nombre || "Miguel Torres",
-      rol: req.user?.rol || "EVALUADOR"
-    };
-
-    console.log("👤 Usuario que actualiza:", usuarioInfo);
-
-    const resultado = await evaluacionService.actualizarNotasEvaluaciones(
-      filas,
-      usuarioInfo
-    );
-
-    console.log("✅ Resultado de actualización:", resultado);
-
-    return successResponse(res, resultado, 200);
-  } catch (err) {
-    console.error("❌ Error en actualizarNotas:", err);
-    next(err);
-  }
-}
-
-/**
- * GET /api/evaluaciones/historial
- * Obtiene el historial de cambios de evaluaciones
- */
+/* ============================================================
+   GET /api/evaluaciones/historial
+   ============================================================ */
 export async function getHistorialEvaluaciones(req, res, next) {
   try {
-    const filtros = req.query;
-    const historial = await evaluacionService.getHistorialEvaluaciones(filtros);
+    const usr = req.user || {};
+    const rol = norm(usr.rol ?? usr.role);
+    const id_usuario = usr.id_usuario;
+    const q = req.query || {};
 
-    return successResponse(res, historial, 200);
+    let idEvaluador = usr?.id_evaluador ? Number(usr.id_evaluador) : null;
+
+    if (!idEvaluador && q?.idEvaluador) {
+      const n = Number(q.idEvaluador);
+      if (Number.isFinite(n)) idEvaluador = n;
+    }
+
+    if (!idEvaluador) {
+      try {
+        idEvaluador = await evaluacionService.resolveIdEvaluadorByUsuario({
+          rol, id_usuario
+        });
+      } catch (e) {
+        console.log("🟨[CTRL:getHistorial] resolveIdEvaluador error:", e?.message);
+      }
+    }
+
+    console.log("🟦[CTRL:getHistorial] idEvaluador:", idEvaluador, " query:", q);
+
+    const rows = await evaluacionService.getHistorialEvaluaciones({
+      idEvaluador,
+      search: q.search ?? null,
+      from: q.from ?? null,
+      to: q.to ?? null
+    });
+
+    console.log("🟦[CTRL:getHistorial] rows:", rows.length);
+
+    // 🔎 Nombre mostrable: intenta con nombre+apellidos, luego username, email, y último fallback
+    const nameParts = [
+      (usr?.nombre ?? usr?.nombres ?? "").toString().trim(),
+      (usr?.apellidos ?? usr?.apellido ?? "").toString().trim(),
+    ].filter(Boolean);
+
+    const displayUser =
+      (nameParts.join(" ") || "").trim() ||
+      (usr?.username ?? "").toString().trim() ||
+      (usr?.email ?? "").toString().trim() ||
+      (idEvaluador ? `Evaluador #${idEvaluador}` : "Evaluador");
+
+    // 🔥 MAPEO A LAS COLUMNAS DEL FRONT
+    const data = rows.map((r, idx) => ({
+      id: r.id_auditoria ?? idx + 1,
+      competidor: r.competidor ?? "",
+      notaAnterior: r.campo === "nota" ? (r.anterior ?? "") : "",
+      notaNueva:    r.campo === "nota" ? (r.nuevo ?? "")    : "",
+      fecha: r.fecha
+        ? new Date(r.fecha).toISOString().slice(0, 16).replace("T", " ")
+        : "",
+      usuario: displayUser,
+    }));
+
+    return ok(res, data, 200);
+
   } catch (err) {
+    console.log("🟥[CTRL:getHistorial] error:", err);
+    next(err);
+  }
+}
+
+/* ============================================================
+   PUT /api/evaluaciones   (actualización batch)
+   ============================================================ */
+export async function actualizarNotasBatch(req, res, next) {
+  try {
+    const usr = req.user || {};
+    const rol = norm(usr.rol ?? usr.role);
+    const id_usuario = usr.id_usuario;
+    const q = req.query || {};
+
+    let idEvaluador = usr?.id_evaluador ? Number(usr.id_evaluador) : null;
+
+    if (!idEvaluador && q?.idEvaluador) {
+      const n = Number(q.idEvaluador);
+      if (Number.isFinite(n)) idEvaluador = n;
+    }
+
+    if (!idEvaluador) {
+      try {
+        idEvaluador = await evaluacionService.resolveIdEvaluadorByUsuario({ rol, id_usuario });
+      } catch (e) {
+        console.log("🟨[CTRL:putBatch] resolveIdEvaluador error:", e?.message);
+      }
+    }
+
+    const cambios = Array.isArray(req.body) ? req.body : [];
+    console.log("🟦[CTRL:putBatch] idEvaluador:", idEvaluador, " cambios:", cambios.length);
+
+    const result = await evaluacionService.actualizarNotasBatch({
+      idEvaluador,
+      cambios,
+      usuarioInfo: { id_usuario, rol },
+    });
+
+    return ok(res, result, 200);
+
+  } catch (err) {
+    console.log("🟥[CTRL:putBatch] error:", err);
+    next(err);
+  }
+}
+
+/* ============================================================
+   PATCH /api/evaluaciones/:id
+   ============================================================ */
+export async function actualizarNotaIndividual(req, res, next) {
+  try {
+    const usr = req.user || {};
+    const rol = norm(usr.rol ?? usr.role);
+    const id_usuario = usr.id_usuario;
+
+    const id = Number(req.params.id);
+    if (!id || Number.isNaN(id)) {
+      return res.status(400).json({ ok: false, error: "id inválido" });
+    }
+
+    const q = req.query || {};
+    const { nota, observacion } = req.body ?? {};
+
+    let idEvaluador = usr?.id_evaluador ? Number(usr.id_evaluador) : null;
+
+    if (!idEvaluador && q?.idEvaluador) {
+      const n = Number(q.idEvaluador);
+      if (Number.isFinite(n)) idEvaluador = n;
+    }
+
+    if (!idEvaluador) {
+      try {
+        idEvaluador = await evaluacionService.resolveIdEvaluadorByUsuario({
+          rol, id_usuario
+        });
+      } catch (e) {
+        console.log("🟨[CTRL:patchOne] resolveIdEvaluador error:", e?.message);
+      }
+    }
+
+    console.log("🟦[CTRL:patchOne] idEvaluador:", idEvaluador, " id_evaluacion:", id, " body:", { nota, observacion });
+
+    const result = await evaluacionService.actualizarNotaIndividual({
+      idEvaluador,
+      id_evaluacion: id,
+      datos: { nota, observacion },
+      usuarioInfo: { id_usuario, rol },
+    });
+
+    return ok(res, result, 200);
+
+  } catch (err) {
+    console.log("🟥[CTRL:patchOne] error:", err);
     next(err);
   }
 }

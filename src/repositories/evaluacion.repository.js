@@ -1,381 +1,320 @@
-// src/controllers/evaluacion.repository.js
-import * as evaluacionService from "../services/evaluacion.service.js";
-import { successResponse } from "../utils/response.js";
+// src/repositories/evaluacion.repository.js
 import prisma from "../config/prisma.js";
 
-/**
- * Lista de resultados para la fase clasificatoria
- */
-export async function findResultadosClasificatoria(filters = {}) {
-  try {
-    const { idFase, idArea, idNivel, idEvaluador } = filters;
-
-    // Filtros a nivel de inscritos (área / nivel)
-    const whereInscrito = {};
-    if (idArea) whereInscrito.id_area = BigInt(idArea);
-    if (idNivel) whereInscrito.id_nivel = BigInt(idNivel);
-
-    // Filtros dentro de evaluaciones (fase / evaluador)
-    const whereEval = {};
-    if (idFase) whereEval.id_fase = BigInt(idFase);
-    if (idEvaluador) whereEval.id_evaluador = BigInt(idEvaluador);
-
-    const resultados = await prisma.inscritos.findMany({
-      where: Object.keys(whereInscrito).length ? whereInscrito : undefined,
-      select: {
-        id_inscritos: true,
-        nombres_inscrito: true,
-        apellidos_inscrito: true,
-        clasificados: {
-          select: {
-            estado: true,
-          },
-        },
-        evaluaciones: {
-          where: Object.keys(whereEval).length ? whereEval : undefined,
-          select: {
-            id_evaluacion: true,
-            observacion: true,
-            nota: true,
-          },
-          orderBy: { id_evaluacion: "asc" },
-        },
-      },
-      orderBy: { id_inscritos: "asc" },
-    });
-
-    return resultados.map((r) => {
-      const fullName = `${r.nombres_inscrito} ${r.apellidos_inscrito}`.trim();
-      const primeraEval = r.evaluaciones[0] ?? null;
-
-      const notaBruta = primeraEval?.nota ?? null;
-      const nota = notaBruta === null || notaBruta === undefined ? "" : Number(notaBruta);
-
-      const estado = notaBruta === null || notaBruta === undefined ? "Pendiente" : "Calificado";
-      const estadoClasificacion = r.clasificados[0]?.estado || null;
-
-      return {
-        id: primeraEval?.id_evaluacion ? Number(primeraEval.id_evaluacion) : Number(r.id_inscritos),
-        id_inscrito: Number(r.id_inscritos),
-        id_evaluacion: primeraEval?.id_evaluacion ? Number(primeraEval.id_evaluacion) : null,
-        competidor: fullName,
-        nota,
-        observacion: primeraEval?.observacion || "",
-        estado,
-        estadoClasificacion,
-      };
-    });
-  } catch (error) {
-    console.error("❌ Error en findResultadosClasificatoria:", error);
-    throw error;
-  }
-}
-
-/**
- * Actualiza UNA SOLA evaluación
- */
-export async function updateNotaEvaluacion(idEvaluacion, datos, usuarioInfo = {}) {
-  try {
-    const idEval = BigInt(idEvaluacion);
-
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Obtener el registro actual
-      const actual = await tx.evaluaciones.findUnique({
-        where: { id_evaluacion: idEval },
-        include: {
-          inscritos: {
-            select: {
-              nombres_inscrito: true,
-              apellidos_inscrito: true,
-            }
-          }
-        }
-      });
-
-      if (!actual) {
-        throw new Error(`Evaluación con ID ${idEvaluacion} no encontrada`);
-      }
-
-      // 2. Preparar valores
-      const notaAnterior = actual.nota;
-      const observacionAnterior = actual.observacion ?? "";
-
-      let notaNueva = null;
-      if (datos.nota !== "" && datos.nota !== null && datos.nota !== undefined) {
-        const notaNum = parseFloat(datos.nota);
-        if (!isNaN(notaNum)) {
-          notaNueva = notaNum;
-        }
-      }
-
-      const observacionNueva = datos.observacion !== undefined ? datos.observacion : observacionAnterior;
-
-      // 3. Verificar cambios
-      const mismaNota =
-        (notaAnterior === null && notaNueva === null) ||
-        (notaAnterior !== null && notaNueva !== null && parseFloat(notaAnterior) === parseFloat(notaNueva));
-
-      const mismaObs = observacionAnterior === (observacionNueva ?? "");
-
-      if (mismaNota && mismaObs) {
-        return { 
-          updated: false, 
-          message: "No hay cambios para guardar",
-          evaluacion: actual 
-        };
-      }
-
-      // 4. Actualizar
-      const evaluacionActualizada = await tx.evaluaciones.update({
-        where: { id_evaluacion: idEval },
-        data: {
-          nota: notaNueva,
-          observacion: observacionNueva,
-          fecha: new Date(),
-        },
-      });
-
-      // 5. Auditoría
-      const competidorNombre = actual.inscritos 
-        ? `${actual.inscritos.nombres_inscrito} ${actual.inscritos.apellidos_inscrito}`.trim()
-        : "Desconocido";
-
-      await tx.auditoria.create({
-        data: {
-          actor_tipo: "EVALUADOR",
-          id_actor: usuarioInfo.id ? BigInt(usuarioInfo.id) : null,
-          actor_nombre_snapshot: usuarioInfo.nombre || "Sistema",
-          accion: "ACTUALIZAR_EVALUACION",
-          entidad: "EVALUACIONES",
-          id_entidad: idEval,
-          valor_anterior: JSON.stringify({
-            nota: notaAnterior ? notaAnterior.toString() : null,
-            observacion: observacionAnterior
-          }),
-          valor_nuevo: JSON.stringify({
-            nota: notaNueva ? notaNueva.toString() : null,
-            observacion: observacionNueva ?? ""
-          }),
-          resultado: "OK",
-        },
-      });
-
-      return { 
-        updated: true, 
-        message: "Evaluación actualizada correctamente",
-        evaluacion: {
-          ...evaluacionActualizada,
-          id_evaluacion: Number(evaluacionActualizada.id_evaluacion)
-        },
-        competidor: competidorNombre
-      };
-    }, {
-      maxWait: 10000, // Espera máxima: 10 segundos
-      timeout: 20000,  // Timeout total: 20 segundos
-    });
-
-    return result;
-  } catch (error) {
-    console.error("❌ Error en updateNotaEvaluacion:", error);
-    throw error;
-  }
-}
-
-/**
- * Actualiza múltiples evaluaciones en lote
- */
-export async function updateNotasEvaluaciones(filas = [], usuarioInfo = {}) {
-  try {
-    if (!Array.isArray(filas) || filas.length === 0) {
-      return { updated: 0, message: "No hay datos para actualizar" };
+// === util para ubicar delegates ===
+function pickModel(modelDesc, candidates) {
+  for (const name of candidates) {
+    const delegate = prisma?.[name];
+    if (delegate && typeof delegate === "object") {
+      return delegate;
     }
-
-    const result = await prisma.$transaction(async (tx) => {
-      let updatedCount = 0;
-      const errores = [];
-
-      for (const fila of filas) {
-        // Validar que tenga id_evaluacion
-        const evalId = fila.id_evaluacion || fila.id;
-        
-        if (!evalId) {
-          console.warn("⚠️ Fila sin id_evaluacion:", fila);
-          continue;
-        }
-
-        const parsedId = parseInt(evalId, 10);
-        if (!Number.isFinite(parsedId)) {
-          errores.push(`ID inválido: ${evalId}`);
-          continue;
-        }
-
-        const idEval = BigInt(parsedId);
-
-        try {
-          const actual = await tx.evaluaciones.findUnique({
-            where: { id_evaluacion: idEval },
-            include: {
-              inscritos: {
-                select: {
-                  nombres_inscrito: true,
-                  apellidos_inscrito: true,
-                }
-              }
-            }
-          });
-
-          if (!actual) {
-            errores.push(`Evaluación ${parsedId} no encontrada`);
-            continue;
-          }
-
-          const notaAnterior = actual.nota;
-          const observacionAnterior = actual.observacion ?? "";
-
-          let notaNueva = null;
-          if (fila.nota !== "" && fila.nota !== null && fila.nota !== undefined) {
-            const notaNum = parseFloat(fila.nota);
-            if (!isNaN(notaNum)) {
-              notaNueva = notaNum;
-            }
-          }
-
-          const observacionNueva = fila.observacion !== undefined ? fila.observacion : observacionAnterior;
-
-          const mismaNota =
-            (notaAnterior === null && notaNueva === null) ||
-            (notaAnterior !== null && notaNueva !== null && parseFloat(notaAnterior) === parseFloat(notaNueva));
-
-          const mismaObs = observacionAnterior === (observacionNueva ?? "");
-
-          if (mismaNota && mismaObs) {
-            continue;
-          }
-
-          await tx.evaluaciones.update({
-            where: { id_evaluacion: idEval },
-            data: {
-              nota: notaNueva,
-              observacion: observacionNueva,
-              fecha: new Date(),
-            },
-          });
-
-          const competidorNombre = actual.inscritos 
-            ? `${actual.inscritos.nombres_inscrito} ${actual.inscritos.apellidos_inscrito}`.trim()
-            : "Desconocido";
-
-          await tx.auditoria.create({
-            data: {
-              actor_tipo: "EVALUADOR",
-              id_actor: usuarioInfo.id ? BigInt(usuarioInfo.id) : null,
-              actor_nombre_snapshot: usuarioInfo.nombre || "Sistema",
-              accion: "ACTUALIZAR_EVALUACION",
-              entidad: "EVALUACIONES",
-              id_entidad: idEval,
-              valor_anterior: JSON.stringify({
-                nota: notaAnterior ? notaAnterior.toString() : null,
-                observacion: observacionAnterior
-              }),
-              valor_nuevo: JSON.stringify({
-                nota: notaNueva ? notaNueva.toString() : null,
-                observacion: observacionNueva ?? ""
-              }),
-              resultado: "OK",
-            },
-          });
-
-          updatedCount++;
-        } catch (error) {
-          errores.push(`Error en evaluación ${parsedId}: ${error.message}`);
-        }
-      }
-
-      return { 
-        updated: updatedCount,
-        errores: errores.length > 0 ? errores : null,
-        message: `${updatedCount} evaluación(es) actualizada(s)`
-      };
-    }, {
-      maxWait: 30000, // Espera máxima: 30 segundos
-      timeout: 60000,  // Timeout total: 60 segundos
-    });
-
-    return result;
-  } catch (error) {
-    console.error("❌ Error en updateNotasEvaluaciones:", error);
-    throw error;
   }
+  const tried = candidates.join(", ");
+  const err = new Error(`Modelo Prisma no encontrado: ${modelDesc}. Probados: ${tried}.
+Revisa schema.prisma y agrega el nombre exacto a esta lista.`);
+  err.status = 500;
+  throw err;
 }
 
-/**
- * Historial de cambios
- */
-export async function findHistorialEvaluaciones(filters = {}) {
-  try {
-    const whereClause = {
-      entidad: "EVALUACIONES",
-      accion: "ACTUALIZAR_EVALUACION",
+const Evaluacion = () =>
+  pickModel("evaluaciones", ["evaluaciones", "Evaluaciones", "evaluacion", "Evaluacion"]);
+
+const Inscrito = () =>
+  pickModel("inscritos", ["inscritos", "Inscritos", "inscrito", "Inscrito"]);
+
+const Evaluador = () =>
+  pickModel("evaluador", ["evaluador", "Evaluador"]);
+
+const Auditoria = () =>
+  // Usamos el modelo auditoria que YA existe en Prisma
+  pickModel("auditoria", ["auditoria"]);
+
+// === usuario -> evaluador ===
+export async function findEvaluadorByUsuario(id_usuario) {
+  if (id_usuario === null || id_usuario === undefined) return null;
+  return Evaluador().findFirst({
+    where: { id_usuario: BigInt(id_usuario) },
+    select: { id_evaluador: true, id_area: true },
+  });
+}
+
+// === listado principal con filtros ===
+export async function findResultadosClasificatoria({
+  idFase = null,
+  idNivel = null,
+  estado = null,
+  search = null,
+  idEvaluador = null,
+}) {
+  // filtro de evaluacion (por evaluador/fase)
+  const whereEval = {};
+  if (idEvaluador) whereEval.id_evaluador = BigInt(idEvaluador);
+  if (idFase) whereEval.id_fase = BigInt(idFase);
+
+  // buscar área del evaluador (para cruzar con inscritos)
+  let areaEvaluador = null;
+  if (idEvaluador) {
+    const evInfo = await Evaluador().findFirst({
+      where: { id_evaluador: BigInt(idEvaluador) },
+      select: { id_area: true },
+    });
+    areaEvaluador = evInfo ? Number(evInfo.id_area) : null;
+  }
+
+  // traer evaluaciones
+  const evals = await Evaluacion().findMany({
+    where: whereEval,
+    select: {
+      id_evaluacion: true,
+      id_inscrito: true,
+      id_evaluador: true,
+      id_fase: true,
+      nota: true,
+      observacion: true,
+    },
+    orderBy: [{ id_evaluacion: "asc" }],
+  });
+
+  if (!evals.length) return [];
+
+  // IDs de inscritos presentes en esas evaluaciones
+  const idsInscritos = Array.from(
+    new Set(evals.map((e) => Number(e.id_inscrito)).filter(Number.isFinite))
+  );
+
+  // filtro de inscritos: por conjunto y área del evaluador
+  const whereIns = { id_inscritos: { in: idsInscritos.map((n) => BigInt(n)) } };
+  if (areaEvaluador) whereIns.id_area = BigInt(areaEvaluador);
+
+  if (idNivel) whereIns.id_nivel = BigInt(String(idNivel));
+  if (estado) whereIns.estado = estado;
+
+  if (search) {
+    whereIns.OR = [
+      { ci_inscrito: { contains: search, mode: "insensitive" } },
+      { nombres_inscrito: { contains: search, mode: "insensitive" } },
+      { apellidos_inscrito: { contains: search, mode: "insensitive" } },
+      { unidad_educativa: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  // traer inscritos filtrados
+  const insRows = await Inscrito().findMany({
+    where: whereIns,
+    select: {
+      id_inscritos: true,
+      ci_inscrito: true,
+      nombres_inscrito: true,
+      apellidos_inscrito: true,
+      unidad_educativa: true,
+      id_nivel: true,
+      id_area: true,
+      estado: true,
+    },
+  });
+
+  const insMap = new Map(insRows.map((r) => [Number(r.id_inscritos), r]));
+
+  // merge
+  const merged = [];
+  for (const ev of evals) {
+    const idIns = Number(ev.id_inscrito);
+    const ins = insMap.get(idIns);
+    if (!ins) continue; // fuera por filtros
+
+    merged.push({
+      id_evaluacion: Number(ev.id_evaluacion),
+      id_inscrito: idIns,
+      nota: ev.nota, // ojo: Decimal? (Prisma.Decimal). El front lo usa como string/number y funciona.
+      observacion: ev.observacion ?? "",
+      competidor: `${(ins.nombres_inscrito ?? "").trim()} ${(ins.apellidos_inscrito ?? "").trim()}`.trim(),
+      ci_inscrito: ins.ci_inscrito,
+      nivel: Number(ins.id_nivel),
+      area: Number(ins.id_area),
+      estado: ins.estado,
+    });
+  }
+
+  return merged;
+}
+
+// === historial (desde `auditoria`) ===
+export async function getHistorialEvaluaciones({ idEvaluador = null }) {
+  // 1) leemos auditoría para la entidad evaluaciones
+  const whereAudit = { entidad: "evaluaciones" };
+  if (idEvaluador) {
+    whereAudit.id_actor = BigInt(idEvaluador);
+  }
+
+  const rows = await Auditoria().findMany({
+    where: whereAudit,
+    orderBy: [{ fecha_hora: "desc" }],
+    select: {
+      id_auditoria: true,
+      fecha_hora: true,
+      actor_tipo: true,
+      id_actor: true,
+      accion: true,
+      entidad: true,
+      id_entidad: true,
+      valor_anterior: true,
+      valor_nuevo: true,
+    },
+  });
+
+  if (!rows.length) return [];
+
+  // 2) mapear eval -> inscrito
+  const evalIds = Array.from(new Set(rows.map(r => Number(r.id_entidad)).filter(Boolean)));
+  const evals = await Evaluacion().findMany({
+    where: { id_evaluacion: { in: evalIds.map(n => BigInt(n)) } },
+    select: { id_evaluacion: true, id_inscrito: true },
+  });
+  const evalToIns = new Map(evals.map(e => [Number(e.id_evaluacion), Number(e.id_inscrito)]));
+
+  const insIds = Array.from(new Set(evals.map(e => Number(e.id_inscrito)).filter(Boolean)));
+  const inscritos = await Inscrito().findMany({
+    where: { id_inscritos: { in: insIds.map(n => BigInt(n)) } },
+    select: { id_inscritos: true, nombres_inscrito: true, apellidos_inscrito: true },
+  });
+  const insMap = new Map(inscritos.map(i => [Number(i.id_inscritos), i]));
+
+  // 3) enriquecer con competidor + mapeo de campo para UI
+  return rows.map(r => {
+    const idEval = Number(r.id_entidad);
+    const idIns = evalToIns.get(idEval);
+    const ins = idIns ? insMap.get(idIns) : null;
+    const competidor = ins
+      ? `${(ins.nombres_inscrito ?? "").trim()} ${(ins.apellidos_inscrito ?? "").trim()}`.trim()
+      : "";
+
+    const isNota = r.accion === "UPDATE_NOTA";
+    const isObs  = r.accion === "UPDATE_OBSERVACION";
+
+    return {
+      id_auditoria: Number(r.id_auditoria),
+      id_evaluacion: idEval,
+      id_evaluador: Number(r.id_actor ?? 0),
+      campo: isNota ? "nota" : (isObs ? "observacion" : r.accion),
+      anterior: r.valor_anterior,
+      nuevo: r.valor_nuevo,
+      fecha: r.fecha_hora,
+      competidor,
     };
+  });
+}
 
-    if (filters.idEvaluador) {
-      whereClause.id_actor = BigInt(filters.idEvaluador);
-    }
+// === helpers de validación/updates ===
+export async function countEvaluacionesPropias({ idEvaluador, ids }) {
+  if (!ids?.length) return 0;
+  return Evaluacion().count({
+    where: {
+      id_evaluacion: { in: ids.map((x) => BigInt(x)) },
+      id_evaluador: BigInt(idEvaluador),
+    },
+  });
+}
 
-    const auditorias = await prisma.auditoria.findMany({
-      where: whereClause,
-      orderBy: { fecha_hora: "desc" },
-      take: 200,
+export async function isEvaluacionPropia({ idEvaluador, id_evaluacion }) {
+  const ev = await Evaluacion().findFirst({
+    where: {
+      id_evaluacion: BigInt(id_evaluacion),
+      id_evaluador: BigInt(idEvaluador),
+    },
+    select: { id_evaluacion: true },
+  });
+  return !!ev;
+}
+
+export async function updateNotasBatch({ cambios }) {
+  let updated = 0;
+  for (const c of cambios) {
+    const id = Number(c.id_evaluacion);
+    if (!id) continue;
+    await updateNotaIndividual({
+      id_evaluacion: id,
+      datos: { nota: c.nota, observacion: c.observacion },
     });
-
-    if (auditorias.length === 0) {
-      return [];
-    }
-
-    const idsEval = [...new Set(auditorias.map((a) => a.id_entidad).filter((id) => id !== null))];
-
-    const evaluaciones = await prisma.evaluaciones.findMany({
-      where: { id_evaluacion: { in: idsEval } },
-      include: { inscritos: true },
-    });
-
-    const mapaEval = new Map();
-    evaluaciones.forEach((e) => {
-      const competidor = e.inscritos
-        ? `${e.inscritos.nombres_inscrito} ${e.inscritos.apellidos_inscrito}`.trim()
-        : "Desconocido";
-      mapaEval.set(e.id_evaluacion.toString(), competidor);
-    });
-
-    return auditorias.map((a) => {
-      const idEvalStr = a.id_entidad ? a.id_entidad.toString() : "";
-      const competidor = idEvalStr ? mapaEval.get(idEvalStr) || "Desconocido" : "";
-
-      let notaAnterior = "";
-      let notaNueva = "";
-
-      try {
-        const anterior = JSON.parse(a.valor_anterior || "{}");
-        const nuevo = JSON.parse(a.valor_nuevo || "{}");
-        notaAnterior = anterior.nota || "";
-        notaNueva = nuevo.nota || "";
-      } catch {
-        notaAnterior = a.valor_anterior ?? "";
-        notaNueva = a.valor_nuevo ?? "";
-      }
-
-      return {
-        id: Number(a.id_auditoria),
-        competidor,
-        notaAnterior,
-        notaNueva,
-        fecha: a.fecha_hora.toISOString().slice(0, 10),
-        hora: a.fecha_hora.toISOString().slice(11, 19),
-        usuario: a.actor_nombre_snapshot ?? "Sistema",
-      };
-    });
-  } catch (error) {
-    console.error("❌ Error en findHistorialEvaluaciones:", error);
-    throw error;
+    updated++;
   }
+  return { updated, message: `Se actualizaron ${updated} registros` };
+}
+
+export async function updateNotaIndividual({ id_evaluacion, datos }) {
+  // 1) Traer valores previos
+  const before = await Evaluacion().findUnique({
+    where: { id_evaluacion: BigInt(id_evaluacion) },
+    select: { id_evaluacion: true, id_inscrito: true, id_evaluador: true, nota: true, observacion: true },
+  });
+  if (!before) throw new Error(`Evaluación ${id_evaluacion} no encontrada`);
+
+  // 2) Preparar set
+  const set = {};
+  if (datos?.hasOwnProperty("nota")) {
+    const n = parseFloat(datos.nota);
+    set.nota = Number.isNaN(n) ? null : n;
+  }
+  if (datos?.hasOwnProperty("observacion")) {
+    set.observacion = (datos.observacion ?? "").toString();
+  }
+
+  // 3) Actualizar
+  const after = await Evaluacion().update({
+    where: { id_evaluacion: BigInt(id_evaluacion) },
+    data: set,
+    select: {
+      id_evaluacion: true,
+      id_inscrito: true,
+      id_evaluador: true,
+      nota: true,
+      observacion: true,
+    },
+  });
+
+  // 4) Escribir auditoría en `auditoria`
+  const auditRows = [];
+  const evalId = Number(after.id_evaluacion);
+  const evalActor = after.id_evaluador ? Number(after.id_evaluador) : null;
+
+  if (set.hasOwnProperty("nota") && String(before.nota ?? "") !== String(after.nota ?? "")) {
+    auditRows.push({
+      fecha_hora: new Date(),
+      actor_tipo: "EVALUADOR",
+      id_actor: evalActor ? BigInt(evalActor) : null,
+      accion: "UPDATE_NOTA",
+      entidad: "evaluaciones",
+      id_entidad: BigInt(evalId),
+      valor_anterior: before.nota == null ? null : String(before.nota),
+      valor_nuevo: after.nota == null ? null : String(after.nota),
+      resultado: "OK",
+      motivo_error: null,
+    });
+  }
+  if (set.hasOwnProperty("observacion") && (before.observacion ?? "") !== (after.observacion ?? "")) {
+    auditRows.push({
+      fecha_hora: new Date(),
+      actor_tipo: "EVALUADOR",
+      id_actor: evalActor ? BigInt(evalActor) : null,
+      accion: "UPDATE_OBSERVACION",
+      entidad: "evaluaciones",
+      id_entidad: BigInt(evalId),
+      valor_anterior: before.observacion ?? null,
+      valor_nuevo: after.observacion ?? null,
+      resultado: "OK",
+      motivo_error: null,
+    });
+  }
+
+  if (auditRows.length) {
+    await Auditoria().createMany({ data: auditRows, skipDuplicates: true });
+  }
+
+  // 5) Respuesta
+  return {
+    id_evaluacion: evalId,
+    id_inscrito: Number(after.id_inscrito),
+    id_evaluador: Number(after.id_evaluador),
+    nota: after.nota,
+    observacion: after.observacion ?? "",
+  };
 }
