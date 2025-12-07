@@ -222,31 +222,19 @@ export async function asignarInscritosAEvaluador(
 }
 
 // ==================== DASHBOARD STATS ====================
-
 export async function getInscritosStats() {
-  // 🔹 Total filas en la tabla inscritos
-  const totalInscritos = await prisma.inscritos.count();
+  // Usamos las dos tablas reales:
+  //  - inscritos        → todos los inscritos
+  //  - clasificados     → todos los clasificados
 
-  // 🔹 Clasificados
-  // Si usas una tabla de clasificados, cuenta ahí.
-  // Si aún no la estás usando, esto seguirá devolviendo 0 sin romper nada.
-  let clasificados = 0;
-
-  try {
-    // Ajusta el nombre del modelo si en tu Prisma se llama distinto
-    // (por ejemplo Listas_clasificados, listas_publicadas, etc.)
-    clasificados = await prisma.clasificados.count();
-  } catch (err) {
-    console.warn(
-      "⚠️ No se pudo contar listas_clasificados, se asume 0 clasificados:",
-      err.message
-    );
-    clasificados = 0;
-  }
+  const [totalInscritos, totalClasificados] = await Promise.all([
+    prisma.inscritos.count(),
+    prisma.clasificados.count(),
+  ]);
 
   return {
     total: totalInscritos,
-    clasificados,
+    clasificados: totalClasificados,
   };
 }
 
