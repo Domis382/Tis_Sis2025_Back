@@ -1,35 +1,64 @@
 // src/services/evaluacion.service.js
-import {
-  findResultadosClasificatoria,
-  updateNotaEvaluacion,
-  updateNotasEvaluaciones,
-  findHistorialEvaluaciones
-} from "../repositories/evaluacion.repository.js";
+import * as repo from "../repositories/evaluacion.repository.js";
 
 /**
- * Obtiene los resultados de la clasificatoria con filtros
+ * Si el usuario es EVALUADOR → retorna su id_evaluador (num).
+ * Otros roles → null (no se filtra por evaluador).
  */
-export function getResultadosClasificatoria(filtros = {}) {
-  return findResultadosClasificatoria(filtros);
+export async function resolveIdEvaluadorByUsuario({ rol, id_usuario }) {
+  const isEvaluador = (rol ?? "").toString().includes("EVALUADOR");
+  if (!isEvaluador) return null;
+
+  const ev = await repo.findEvaluadorByUsuario(id_usuario);
+  if (!ev) throw new Error("No tiene perfil de evaluador");
+  return Number(ev.id_evaluador);
+}
+
+/** Búsqueda principal para la grilla del evaluador/coordinador */
+export async function findResultadosClasificatoria(params) {
+  return repo.findResultadosClasificatoria(params);
+}
+
+/** Historial de cambios (si existe tabla de auditoría) */
+export async function getHistorialEvaluaciones(params) {
+  return repo.getHistorialEvaluaciones(params);
+}
+
+/** Guardado en lote con validación de propiedad si es EVALUADOR */
+export async function actualizarNotasBatch({ idEvaluador, cambios, usuarioInfo }) {
+  if (idEvaluador) {
+    const ids = cambios.map((c) => Number(c.id_evaluacion)).filter(Boolean);
+    const count = await repo.countEvaluacionesPropias({ idEvaluador, ids });
+    if (count !== ids.length) {
+      const err = new Error("Intento de modificar evaluaciones ajenas");
+      err.status = 403;
+      throw err;
+    }
+  }
+  return repo.updateNotasBatch({ cambios, usuarioInfo });
+}
+
+/** Guardado individual con validación de propiedad si es EVALUADOR */
+export async function actualizarNotaIndividual({ idEvaluador, id_evaluacion, datos, usuarioInfo }) {
+  if (idEvaluador) {
+    const esPropia = await repo.isEvaluacionPropia({ idEvaluador, id_evaluacion });
+    if (!esPropia) {
+      const err = new Error("Intento de modificar evaluación ajena");
+      err.status = 403;
+      throw err;
+    }
+  }
+  return repo.updateNotaIndividual({ id_evaluacion, datos, usuarioInfo });
 }
 
 /**
- * Actualiza UNA SOLA evaluación (para guardar en tiempo real)
+ * NUEVO: obtener un nombre mostrable para “Usuario” (Historial).
+ * Prioridad: nombre+apellidos → username → email → “Evaluador #<id>”.
  */
-export function actualizarNotaIndividual(idEvaluacion, datos, usuarioInfo = {}) {
-  return updateNotaEvaluacion(idEvaluacion, datos, usuarioInfo);
-}
-
-/**
- * Actualiza múltiples evaluaciones en lote
- */
-export function actualizarNotasEvaluaciones(filas = [], usuarioInfo = {}) {
-  return updateNotasEvaluaciones(filas, usuarioInfo);
-}
-
-/**
- * Obtiene el historial de cambios de evaluaciones
- */
-export function getHistorialEvaluaciones(filtros = {}) {
-  return findHistorialEvaluaciones(filtros);
+export async function resolveNombreDisplay({ id_usuario, idEvaluador }) {
+  try {
+    return await repo.resolveNombreDisplay({ id_usuario, idEvaluador });
+  } catch {
+    return idEvaluador ? `Evaluador #${idEvaluador}` : null;
+  }
 }
