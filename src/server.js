@@ -1,9 +1,9 @@
 // src/server.js
 // Punto de entrada SOLO para entorno local (no lo usa Vercel)
 
-import dotenv from 'dotenv';
-import prisma from './config/prisma.js';
-import app from './app.js';
+import dotenv from "dotenv";
+import prisma from "./config/prisma.js";
+import app from "./app.js";
 
 dotenv.config();
 
@@ -18,15 +18,17 @@ if (!isTest) {
   });
 
   const shutdown = async () => {
-    console.log('Cerrando servidor…');
+    console.log("Cerrando servidor…");
     server.close(async () => {
-      try { await prisma?.$disconnect?.(); } catch (_) {}
+      try {
+        await prisma?.$disconnect?.();
+      } catch (_) {}
       process.exit(0);
     });
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 // Para tests (Supertest, etc.)
