@@ -1,39 +1,43 @@
 // src/routes/index.js
-import { Router } from 'express';
+import { Router } from "express";
 
 // Rutas de módulos
-import authRoutes from './auth.routes.js';
-import areaRoutes from './area.routes.js';
-import evaluacionRoutes from './evaluaciones.routes.js';
-import responsableRoutes from './responsable.routes.js';
-import evaluadorRoutes from './evaluador.routes.js';
-import inscritosRoutes from './inscritos.routes.js';
-import coordinadorRoutes from './coordinador.routes.js';
+import authRoutes from "./auth.routes.js";
+import areaRoutes from "./area.routes.js";
+import evaluacionRoutes from "./evaluaciones.routes.js";
+import responsableRoutes from "./responsable.routes.js";
+import evaluadorRoutes from "./evaluador.routes.js";
+import inscritosRoutes from "./inscritos.routes.js";
+import coordinadorRoutes from "./coordinador.routes.js";
 import usuarioEvalRoutes from "./usuarioEval.routes.js";
 import clasificadosRoutes from './clasificados.routes.js';
 import passwordRoutes from "./password.routes.js";
 import anuncioRoutes from "./anuncio.routes.js";
 
-// 👈 NUEVO: importa las rutas de fases
+import medalleroRoutes from "./medallero.routes.js";
+import publicoMedalleroRoutes from "./publico.medallero.routes.js";
+
+//  NUEVO: importa las rutas de fases
 import fasesRoutes from './fases.routes.js';
 
 
 // Middlewares
-import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
 /* =========================
    Rutas públicas / health
 ========================= */
+
 // /api/
-router.get('/', (_req, res) => {
-  res.json({ ok: true, message: 'API Oh! SanSi Backend funcionando ✅' });
+router.get("/", (_req, res) => {
+  res.json({ ok: true, message: "API Oh! SanSi Backend funcionando ✅" });
 });
 
 // /api/health
-router.get('/health', (_req, res) => {
-  res.json({ ok: true, status: 'UP' });
+router.get("/health", (_req, res) => {
+  res.json({ ok: true, status: "UP" });
 });
 
 /* =========================
@@ -41,22 +45,25 @@ router.get('/health', (_req, res) => {
    Nota: authRoutes ya define /auth/*
    Por eso NO le agregamos prefijo aquí.
 ========================= */
-router.use(authRoutes); // expone /api/auth/*
+
+// expone /api/auth/*
+router.use(authRoutes);
 
 /* =========================
    Rutas protegidas
 ========================= */
-// Áreas (solo Admin/Coordinador)
+
+// Áreas (solo Admin / Coordinador / Responsable de área)
 router.use(
-  '/areas',
-  authMiddleware(['Administrador', 'Coordinador','Responsable de Area']),
+  "/areas",
+  authMiddleware(["ADMIN", "COORDINADOR", "RESPONSABLE"]),
   areaRoutes
 );
 
 //  OPCIÓN 1: proteger fases solo para Administrador
 router.use(
   '/fases',
-  authMiddleware(['Administrador','Coordinador','Responsable de Area']),
+  authMiddleware(['ADMIN','COORDINADOR','RESPONSABLE']),
   fasesRoutes
 );
 
@@ -69,20 +76,25 @@ router.use(
 
 // Ejemplo de ruta protegida para probar credenciales
 router.get(
-  '/profile',
-  authMiddleware(['Responsable de Area', 'Administrador', 'Coordinador']),
+  "/profile",
+  authMiddleware(["RESPONSABLE", "ADMIN", "COORDINADOR"]),
   (req, res) => {
-    res.json({ ok: true, message: '¡Acceso permitido a ruta protegida!', user: req.user });
+    res.json({
+      ok: true,
+      message: "¡Acceso permitido a ruta protegida!",
+      user: req.user,
+    });
   }
 );
 
 /* =========================
    Rutas no protegidas (o con su propio middleware interno)
 ========================= */
-router.use('/evaluaciones', evaluacionRoutes);
-router.use('/responsables', responsableRoutes);
-router.use('/evaluadores', evaluadorRoutes);
-router.use('/coordinador', coordinadorRoutes);
+
+router.use("/evaluaciones", evaluacionRoutes);
+router.use("/responsables", responsableRoutes);
+router.use("/evaluadores", evaluadorRoutes);
+router.use("/coordinador", coordinadorRoutes);
 router.use("/usuariosEval", usuarioEvalRoutes);
 router.use("/clasificados", clasificadosRoutes);
 
@@ -91,12 +103,22 @@ router.use("/anuncios", anuncioRoutes);
 // Importación de inscritos (estas rutas ya protegen con requireRole en su propio archivo)
 router.use('/inscritos', inscritosRoutes);
 router.use(passwordRoutes); // expone /api/password/*
+//router.use("/medallero", medalleroRoutes);
+router.use(
+  '/medallero',
+  authMiddleware(['Responsable de Area', 'Coordinador', 'Administrador']),
+  medalleroRoutes
+);
+router.use("/publico/medallero", publicoMedalleroRoutes);
+
+//app.use("/api/medallero", authMiddleware, medalleroRoutes);
 
 /* =========================
    404 para cualquier otra ruta bajo /api
 ========================= */
+
 router.use((_req, res) => {
-  res.status(404).json({ ok: false, message: 'Ruta no encontrada' });
+  res.status(404).json({ ok: false, message: "Ruta no encontrada" });
 });
 
 //router.use(passwordRoutes); // expone /api/password/*

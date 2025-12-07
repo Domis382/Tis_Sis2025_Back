@@ -41,6 +41,19 @@ export async function remove(req, res, next) {
   }
 }
 
+export async function listarEvaluadores(req, res, next) {
+  try {
+    const user = req.user; // coordinador autenticado
+    const filtros = {
+      idArea: user?.id_area || null,
+    };
+
+    const data = await evaluadorService.listarEvaluadores(filtros);
+    return res.json({ ok: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
 export async function getMiPerfil(req, res, next) {
   try {
     const userId = req.user?.id_usuario; // viene del token

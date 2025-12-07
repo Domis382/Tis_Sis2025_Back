@@ -11,15 +11,13 @@ export async function findAllEvaluadores() {
 }
 
 // Obtener evaluador por ID
-export async function findEvaluadorById(id) {
-  return await db.evaluador.findUnique({
-    where: { id_evaluador: Number(id) },
-    include: {
-      area: true,
-      usuario: true,
-    }
+export async function findEvaluadores({ idArea } = {}) {
+  return prisma.evaluador.findMany({
+    where: idArea ? { id_area: BigInt(idArea) } : undefined,
+    orderBy: { nombre_evaluado: "asc" },
   });
 }
+
 
 // Crear evaluador
 

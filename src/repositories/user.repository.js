@@ -51,7 +51,7 @@ export async function findAuthByRole({ role, username }) {
 
     //  CASO 3: COORDINADOR DE ÁREA
    
-    case 'Coordinador Area':
+    case 'COORDINADOR':
       // En este caso se usa el id_coordinador como username temporal
       // (puedes cambiar esto por un campo email o username en tu esquema)
       return prisma.coordinador_area.findUnique({
