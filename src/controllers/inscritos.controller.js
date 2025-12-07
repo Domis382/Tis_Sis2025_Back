@@ -55,8 +55,9 @@ export async function asignarInscritosAEvaluador(req, res, next) {
 export async function getInscritosStats(req, res, next) {
   try {
     const data = await getInscritosStatsService();
-    return successResponse(res, data);
+    res.json({ ok: true, data });
   } catch (e) {
+    console.error("Error getInscritosStats:", e);
     next(e);
   }
 }
