@@ -1,6 +1,7 @@
 // src/controllers/evaluacion.repository.js
 import * as evaluacionService from "../services/evaluacion.service.js";
 import { successResponse } from "../utils/response.js";
+import prisma from "../config/prisma.js";
 
 /**
  * Lista de resultados para la fase clasificatoria
