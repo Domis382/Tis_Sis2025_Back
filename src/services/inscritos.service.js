@@ -221,3 +221,21 @@ export async function asignarInscritosAEvaluador(
   };
 }
 
+/**
+ * Estadísticas para el dashboard del coordinador
+ * - totalInscritos: todos los registros en INSCRITOS
+ * - clasificados:   inscritos cuyo estado sea "CLASIFICADO"
+ */
+export async function getInscritosStats() {
+  const totalInscritos = await prisma.inscritos.count();
+
+  const clasificados = await prisma.inscritos.count({
+    where: { estado: "CLASIFICADO" }, // ajusta el texto si tu enum es distinto
+  });
+
+  return {
+    totalInscritos,
+    clasificados,
+  };
+}
+

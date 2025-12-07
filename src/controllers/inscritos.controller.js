@@ -50,3 +50,12 @@ export async function asignarInscritosAEvaluador(req, res, next) {
     next(err);
   }
 }
+
+export async function getInscritosStatsController(req, res, next) {
+  try {
+    const data = await getInscritosStats();
+    res.json({ ok: true, data });
+  } catch (e) {
+    next(e);
+  }
+}
