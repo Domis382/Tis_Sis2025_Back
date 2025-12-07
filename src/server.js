@@ -1,5 +1,5 @@
 // src/server.js
-// Punto de entrada SOLO para entorno local (no lo usa Vercel)
+// Punto de entrada SOLO para entorno local (no lo usa Vercel).
 
 import dotenv from "dotenv";
 import prisma from "./config/prisma.js";
