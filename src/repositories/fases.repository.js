@@ -23,3 +23,9 @@ export function updateFaseFinal(nombre_fase, fase_final) {
     data: { fase_final },
   });
 }
+
+export async function eliminarClasificadosPorIds(ids) {
+  return await prisma.clasificados.deleteMany({
+    where: { id_clasificado: { in: ids } },
+  });
+}
