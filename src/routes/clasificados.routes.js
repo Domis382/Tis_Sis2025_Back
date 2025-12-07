@@ -3,10 +3,10 @@ import * as clasificadosController from "../controllers/clasificados.controller.
 
 const router = Router();
 
-// GET /api/clasificados
+// GET /api/clasificados - Obtener todos los clasificados
 router.get("/", clasificadosController.getAll);
 
-// POST /api/clasificados/cargar
+// POST /api/clasificados/cargar - Cargar nuevos clasificados desde Excel
 router.post("/cargar", clasificadosController.uploadExcel);
 
 export default router;

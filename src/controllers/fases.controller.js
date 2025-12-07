@@ -50,3 +50,20 @@ export async function updateParametroClasificacion(req, res, next) {
     next(err);
   }
 }
+
+export async function eliminarClasificadosController(req, res) {
+  try {
+    const { ids } = req.body; // array de IDs
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "Se requiere un array de IDs." });
+    }
+
+    const cantidad = await fasesService.eliminarClasificadosPorIds(ids);
+
+    res.json({ message: `${cantidad} clasificados eliminados.` });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "No se pudieron eliminar los clasificados." });
+  }
+}
