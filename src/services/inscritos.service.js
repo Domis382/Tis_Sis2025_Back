@@ -227,15 +227,14 @@ export async function asignarInscritosAEvaluador(
  * - clasificados:   inscritos cuyo estado sea "CLASIFICADO"
  */
 export async function getInscritosStats() {
-  const totalInscritos = await prisma.inscritos.count();
-
-  const clasificados = await prisma.inscritos.count({
-    where: { estado: "CLASIFICADO" }, // ajusta el texto si tu enum es distinto
-  });
+  const [totalInscritos, totalClasificados] = await Promise.all([
+    prisma.inscritos.count(),
+    prisma.clasificados.count(),   // 👈 LOS CLASIFICADOS ESTÁN AQUÍ
+  ]);
 
   return {
-    totalInscritos,
-    clasificados,
+    total: totalInscritos,
+    clasificados: totalClasificados,
   };
 }
 
