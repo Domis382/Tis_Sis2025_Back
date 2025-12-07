@@ -14,7 +14,10 @@ import clasificadosRoutes from './clasificados.routes.js';
 import passwordRoutes from "./password.routes.js";
 import anuncioRoutes from "./anuncio.routes.js";
 
-// 👈 NUEVO: importa las rutas de fases
+import medalleroRoutes from "./medallero.routes.js";
+import publicoMedalleroRoutes from "./publico.medallero.routes.js";
+
+//  NUEVO: importa las rutas de fases
 import fasesRoutes from './fases.routes.js';
 
 
@@ -100,6 +103,15 @@ router.use("/anuncios", anuncioRoutes);
 // Importación de inscritos (estas rutas ya protegen con requireRole en su propio archivo)
 router.use('/inscritos', inscritosRoutes);
 router.use(passwordRoutes); // expone /api/password/*
+//router.use("/medallero", medalleroRoutes);
+router.use(
+  '/medallero',
+  authMiddleware(['Responsable de Area', 'Coordinador', 'Administrador']),
+  medalleroRoutes
+);
+router.use("/publico/medallero", publicoMedalleroRoutes);
+
+//app.use("/api/medallero", authMiddleware, medalleroRoutes);
 
 /* =========================
    404 para cualquier otra ruta bajo /api
