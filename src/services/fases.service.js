@@ -37,3 +37,9 @@ export function setFaseFinalActiva(activa) {
     Boolean(activa)
   );
 }
+
+export async function eliminarClasificadosPorIds(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return 0;
+  const result = await fasesRepository.eliminarClasificadosPorIds(ids);
+  return result.count;
+}
