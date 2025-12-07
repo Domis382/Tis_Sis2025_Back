@@ -8,6 +8,8 @@ import routes from './routes/index.js';
 import prisma from './config/prisma.js';
 import anuncioRoutes from "./routes/anuncio.routes.js";
 
+//import publicoRoutes from "./routes/publico.medallero.routes.js";
+
 
 
 // 👇 Soporta ambos tipos de export del errorHandler
@@ -46,6 +48,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use('/api', routes);
 
 app.use("/api/anuncios", anuncioRoutes);
+//app.use("/api/publico", publicoRoutes);
 
 
 //  Health 
