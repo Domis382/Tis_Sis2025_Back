@@ -1,10 +1,7 @@
 // src/repositories/evaluacion.repository.js
 import prisma from "../config/prisma.js";
 
-/**
- * Lista de resultados para la fase clasificatoria
- */
-export async function findResultadosClasificatoria(filters = {}) {
+/* export async function findResultadosClasificatoria(filters = {}) {
   try {
     const { idFase, idArea, idNivel, idEvaluador } = filters;
 
@@ -75,125 +72,14 @@ export async function findResultadosClasificatoria(filters = {}) {
     console.error("❌ Error en findResultadosClasificatoria:", error);
     throw error;
   }
-}
+} */
 
-/**
- * Actualiza UNA SOLA evaluación
- */
-export async function updateNotaEvaluacion(idEvaluacion, datos, usuarioInfo = {}) {
-  try {
-    const idEval = BigInt(idEvaluacion);
-
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Obtener el registro actual
-      const actual = await tx.evaluaciones.findUnique({
-        where: { id_evaluacion: idEval },
-        include: {
-          inscritos: {
-            select: {
-              nombres_inscrito: true,
-              apellidos_inscrito: true,
-            }
-          }
-        }
-      });
-
-      if (!actual) {
-        throw new Error(`Evaluación con ID ${idEvaluacion} no encontrada`);
-      }
-
-      // 2. Preparar valores
-      const notaAnterior = actual.nota;
-      const observacionAnterior = actual.observacion ?? "";
-
-      let notaNueva = null;
-      if (datos.nota !== "" && datos.nota !== null && datos.nota !== undefined) {
-        const notaNum = parseFloat(datos.nota);
-        if (!isNaN(notaNum)) {
-          notaNueva = notaNum;
-        }
-      }
-
-      const observacionNueva = datos.observacion !== undefined ? datos.observacion : observacionAnterior;
-
-      // 3. Verificar cambios
-      const mismaNota =
-        (notaAnterior === null && notaNueva === null) ||
-        (notaAnterior !== null && notaNueva !== null && parseFloat(notaAnterior) === parseFloat(notaNueva));
-
-      const mismaObs = observacionAnterior === (observacionNueva ?? "");
-
-      if (mismaNota && mismaObs) {
-        return { 
-          updated: false, 
-          message: "No hay cambios para guardar",
-          evaluacion: actual 
-        };
-      }
-
-      // 4. Actualizar
-      const evaluacionActualizada = await tx.evaluaciones.update({
-        where: { id_evaluacion: idEval },
-        data: {
-          nota: notaNueva,
-          observacion: observacionNueva,
-          fecha: new Date(),
-        },
-      });
-
-      // 5. Auditoría
-      const competidorNombre = actual.inscritos 
-        ? `${actual.inscritos.nombres_inscrito} ${actual.inscritos.apellidos_inscrito}`.trim()
-        : "Desconocido";
-
-      await tx.auditoria.create({
-        data: {
-          actor_tipo: "EVALUADOR",
-          id_actor: usuarioInfo.id ? BigInt(usuarioInfo.id) : null,
-          actor_nombre_snapshot: usuarioInfo.nombre || "Sistema",
-          accion: "ACTUALIZAR_EVALUACION",
-          entidad: "EVALUACIONES",
-          id_entidad: idEval,
-          valor_anterior: JSON.stringify({
-            nota: notaAnterior ? notaAnterior.toString() : null,
-            observacion: observacionAnterior
-          }),
-          valor_nuevo: JSON.stringify({
-            nota: notaNueva ? notaNueva.toString() : null,
-            observacion: observacionNueva ?? ""
-          }),
-          resultado: "OK",
-        },
-      });
-
-      return { 
-        updated: true, 
-        message: "Evaluación actualizada correctamente",
-        evaluacion: {
-          ...evaluacionActualizada,
-          id_evaluacion: Number(evaluacionActualizada.id_evaluacion)
-        },
-        competidor: competidorNombre
-      };
-    }, {
-      maxWait: 10000, // Espera máxima: 10 segundos
-      timeout: 20000,  // Timeout total: 20 segundos
-    });
-
-    return result;
-  } catch (error) {
-    console.error("❌ Error en updateNotaEvaluacion:", error);
-    throw error;
-  }
-}
-
-/**
- * Actualiza múltiples evaluaciones en lote
- */
-export async function updateNotasEvaluaciones(filas = [], usuarioInfo = {}) {
-  try {
-    if (!Array.isArray(filas) || filas.length === 0) {
-      return { updated: 0, message: "No hay datos para actualizar" };
+// === util para ubicar delegates ===
+function pickModel(modelDesc, candidates) {
+  for (const name of candidates) {
+    const delegate = prisma?.[name];
+    if (delegate && typeof delegate === "object") {
+      return delegate;
     }
   }
   const tried = candidates.join(", ");
@@ -298,6 +184,9 @@ export async function findResultadosClasificatoria({
       id_nivel: true,
       id_area: true,
       estado: true,
+      area: {               // <-- incluye la relación
+        select: { nombre_area: true }
+      }
     },
   });
 
@@ -319,6 +208,7 @@ export async function findResultadosClasificatoria({
       ci_inscrito: ins.ci_inscrito,
       nivel: Number(ins.id_nivel),
       area: Number(ins.id_area),
+      area_nombre: ins.area?.nombre_area || null, // nuevo campo con el nombre
       estado: ins.estado,
     });
   }
