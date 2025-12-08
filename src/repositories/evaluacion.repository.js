@@ -77,21 +77,6 @@ export async function findResultadosClasificatoria(filters = {}) {
   }
 }
 
-// === util para ubicar delegates ===
-function pickModel(modelDesc, candidates) {
-  for (const name of candidates) {
-    const delegate = prisma?.[name];
-    if (delegate && typeof delegate === "object") {
-      return delegate;
-    }
-  }
-  const tried = candidates.join(", ");
-  const err = new Error(`Modelo Prisma no encontrado: ${modelDesc}. Probados: ${tried}.
-Revisa schema.prisma y agrega el nombre exacto a esta lista.`);
-  err.status = 500;
-  throw err;
-}
-
 /**
  * Actualiza UNA SOLA evaluación
  */
