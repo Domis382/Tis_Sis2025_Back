@@ -77,6 +77,21 @@ export async function findResultadosClasificatoria(filters = {}) {
   }
 }
 
+// === util para ubicar delegates ===
+function pickModel(modelDesc, candidates) {
+  for (const name of candidates) {
+    const delegate = prisma?.[name];
+    if (delegate && typeof delegate === "object") {
+      return delegate;
+    }
+  }
+  const tried = candidates.join(", ");
+  const err = new Error(`Modelo Prisma no encontrado: ${modelDesc}. Probados: ${tried}.
+Revisa schema.prisma y agrega el nombre exacto a esta lista.`);
+  err.status = 500;
+  throw err;
+}
+
 /**
  * Actualiza UNA SOLA evaluación
  */
@@ -194,12 +209,6 @@ export async function updateNotasEvaluaciones(filas = [], usuarioInfo = {}) {
   try {
     if (!Array.isArray(filas) || filas.length === 0) {
       return { updated: 0, message: "No hay datos para actualizar" };
-// === util para ubicar delegates ===
-function pickModel(modelDesc, candidates) {
-  for (const name of candidates) {
-    const delegate = prisma?.[name];
-    if (delegate && typeof delegate === "object") {
-      return delegate;
     }
   }
   const tried = candidates.join(", ");
@@ -208,6 +217,7 @@ Revisa schema.prisma y agrega el nombre exacto a esta lista.`);
   err.status = 500;
   throw err;
 }
+
 
 const Evaluacion = () =>
   pickModel("evaluaciones", ["evaluaciones", "Evaluaciones", "evaluacion", "Evaluacion"]);
