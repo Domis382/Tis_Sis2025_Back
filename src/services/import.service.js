@@ -48,7 +48,9 @@ function normVal(s) {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, ""); // sin tildes
 }
-function same(a, b) { return normVal(a) === normVal(b); }
+function same(a, b) {
+  return normVal(a) === normVal(b);
+}
 
 // ¿en headers hay alguna variante de la clave canónica?
 function hasHeader(headers, canonical) {
@@ -159,9 +161,9 @@ export async function runImport({
   coordinatorId,
   onlyValid,
   duplicatePolicy,
-  areaFilter,      // ⬅️ nuevo
-  nivelFilter,     // ⬅️ nuevo
-  selectedCis,     // ⬅️ nuevo (array de CI, opcional)
+  areaFilter, // ⬅️ nuevo
+  nivelFilter, // ⬅️ nuevo
+  selectedCis, // ⬅️ nuevo (array de CI, opcional)
 }) {
   const { rows, headers } = await parseFile(file);
 
@@ -193,8 +195,9 @@ export async function runImport({
 
   // 2) Aplicar filtros que vienen de la UI
   let filtered = canon;
-  if (areaFilter)  filtered = filtered.filter((r) => same(r.area, areaFilter));
-  if (nivelFilter) filtered = filtered.filter((r) => same(r.nivel, nivelFilter));
+  if (areaFilter) filtered = filtered.filter((r) => same(r.area, areaFilter));
+  if (nivelFilter)
+    filtered = filtered.filter((r) => same(r.nivel, nivelFilter));
 
   if (Array.isArray(selectedCis) && selectedCis.length) {
     const set = new Set(selectedCis.map((x) => String(x).trim()));
@@ -226,6 +229,7 @@ export async function runImport({
 
   // 4) Validar + insertar SOLO lo filtrado
   let ok = 0;
+  let yaRegistrados = 0;
   const errores = [];
 
   for (let i = 0; i < filtered.length; i++) {
@@ -244,14 +248,16 @@ export async function runImport({
       const estado = String(r.estado || "ACTIVA").toUpperCase();
 
       const dup = await findDuplicate(r.ci_inscrito);
+
+      // 🔹 Caso duplicado por CI
       if (dup) {
+        yaRegistrados++;
+
         if (duplicatePolicy === "omit") {
-          errores.push({
-            fila: filaNum,
-            error: `Duplicado (CI ya existe): ${r.ci_inscrito}`,
-          });
+          // Ya no contamos esto como "error"
           continue;
         }
+
         if (duplicatePolicy === "update") {
           await prisma.inscritos.update({
             where: { id_inscritos: dup.id_inscritos },
@@ -272,9 +278,9 @@ export async function runImport({
           ok++;
           continue;
         }
-        // "duplicate" => crear nuevo registro
       }
 
+      // 🔹 Caso registro nuevo
       await prisma.inscritos.create({
         data: {
           nombres_inscrito: r.nombres_inscrito,
@@ -303,7 +309,7 @@ export async function runImport({
   await prisma.importaciones.update({
     where: { id_import: imp.id_import },
     data: {
-      total_registro: canon.length,   // total leídas del archivo
+      total_registro: canon.length, // total leídas del archivo
       total_ok: ok,
       total_error: errores.length,
       detalle_errores: csvErrores,
@@ -313,8 +319,9 @@ export async function runImport({
   return {
     id_import: imp.id_import,
     total: canon.length,
-    filtered: filtered.length, // cuántas intentaste importar (tras filtros)
+    filtered: filtered.length,
     importados: ok,
+    yaRegistrados,
     errores: errores.length,
   };
 }
