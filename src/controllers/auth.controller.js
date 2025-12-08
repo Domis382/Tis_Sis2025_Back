@@ -13,7 +13,7 @@ const ROL_MAP = {
   EVALUADOR: "EVALUADOR",
 };
 
-// 🔹 Transporter de nodemailer (usa tu EMAIL_USER / EMAIL_PASS del .env)
+//  Transporter de nodemailer (usa tu EMAIL_USER / EMAIL_PASS del .env)
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465, // SSL
@@ -23,16 +23,16 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
   tls: {
-    // ⚠ SOLO PARA DESARROLLO: ignora certificados self-signed
+    //  SOLO PARA DESARROLLO: ignora certificados self-signed
     rejectUnauthorized: false,
   },
 });
 
-// ================== LOGIN ==================
+// Login
 export async function login(req, res, next) {
   try {
     const { username, password, role } = req.body;
-    console.log("📨 Datos recibidos:", { username, password, role });
+    console.log(" Datos recibidos:", { username, password, role });
 
     if (!username || !password) {
       return res
@@ -41,7 +41,7 @@ export async function login(req, res, next) {
     }
 
     if (process.env.AUTH_MOCK === "1") {
-      console.log("🔧 Usando MODO MOCK");
+      console.log(" Usando MODO MOCK");
       const user = {
         id: 999,
         username,
@@ -62,7 +62,7 @@ export async function login(req, res, next) {
     }
 
     console.log(
-      "🔍 Buscando usuario en tabla usuario por correo (username)..."
+      " Buscando usuario en tabla usuario por correo (username)..."
     );
 
     const usuario = await prisma.usuario.findUnique({
@@ -75,7 +75,7 @@ export async function login(req, res, next) {
       },
     });
 
-    console.log("👤 Usuario encontrado:", usuario);
+    console.log(" Usuario encontrado:", usuario);
 
     if (!usuario) {
       return res
@@ -89,9 +89,9 @@ export async function login(req, res, next) {
 
     const isValid = usuario.passwordHash === password;
 
-    console.log("🔐 passwordHash almacenado:", usuario.passwordHash);
-    console.log("🔐 password recibido:", password);
-    console.log("✅ Coinciden?", isValid);
+    console.log(" passwordHash almacenado:", usuario.passwordHash);
+    console.log(" password recibido:", password);
+    console.log(" Coinciden?", isValid);
 
     if (!isValid) {
       return res
@@ -101,7 +101,7 @@ export async function login(req, res, next) {
 
     const mappedRole = ROL_MAP[usuario.rol] || usuario.rol;
 
-    // 🔹 Datos base del usuario (se sobreescriben según rol)
+    // Datos base del usuario (se sobreescriben según rol)
     let userData = {
       id: Number(usuario.id_usuario),
       id_usuario: Number(usuario.id_usuario),
@@ -172,7 +172,7 @@ export async function login(req, res, next) {
             email: resp.correo_electronico,
           };
           id_area_token = Number(resp.id_area);
-          // Si tu modelo tiene id_responsable, puedes usarlo así:
+          // Modelo tiene ese formato
           // id_responsable_token = Number(resp.id_responsable);
         }
         break;
@@ -191,7 +191,7 @@ export async function login(req, res, next) {
             email: usuario.correo,
           };
 
-          id_evaluador_token = Number(evalua.id_evaluador); // 👈 CLAVE
+          id_evaluador_token = Number(evalua.id_evaluador); 
           id_area_token = Number(evalua.id_area);
         }
         break;
@@ -211,8 +211,8 @@ export async function login(req, res, next) {
       }
     }
 
-    console.log("✅ userData final:", userData);
-    console.log("✅ rol (enum):", usuario.rol, "-> rol (string):", mappedRole);
+    console.log(" userData final:", userData);
+    console.log(" rol (enum):", usuario.rol, "-> rol (string):", mappedRole);
 
     const tokenPayload = {
         id_usuario: Number(usuario.id_usuario),   // para getMe
@@ -229,7 +229,7 @@ export async function login(req, res, next) {
           ? Number(usuario.coordinador_area.id_coordinador)
           : null,
 
-        // 👇 ESTE es el importante para mostrar evaluaciones filtradas
+        //  ESTE es el importante para mostrar evaluaciones filtradas
         id_evaluador: usuario.evaluador
           ? Number(usuario.evaluador.id_evaluador)
           : null,
@@ -246,12 +246,12 @@ export async function login(req, res, next) {
       },
     });
   } catch (e) {
-    console.error("❌ Error en login:", e);
+    console.error(" Error en login:", e);
     next(e);
   }
 }
 
-// ================== FORGOT PASSWORD ==================
+// forgot password - enviar código de recuperación
 export async function sendResetCode(req, res) {
   try {
     const { correo } = req.body;
@@ -293,14 +293,14 @@ export async function sendResetCode(req, res) {
 
     return res.json({ ok: true, message: "Código enviado correctamente" });
   } catch (e) {
-    console.error("❌ Error en sendResetCode:", e);
+    console.error(" Error en sendResetCode:", e);
     return res.status(500).json({ ok: false, error: "Error enviando código" });
   }
 }
 
-// ================== VERIFY CODE ==================
+// Verificar codigo de recuperación
 
-// 📌 VERIFICAR CÓDIGO DE RECUPERACIÓN
+//  VERIFICAR CÓDIGO DE RECUPERACIÓN
 export async function verifyResetCode(req, res) {
   try {
     const { correo, code } = req.body;
@@ -344,12 +344,12 @@ export async function verifyResetCode(req, res) {
 
     return res.json({ ok: true });
   } catch (err) {
-    console.error("❌ Error verificando código:", err);
+    console.error(" Error verificando código:", err);
     return res.status(500).json({ ok: false, error: "Error de servidor" });
   }
 }
 
-// 📌 RESET PASSWORD
+//  RESET PASSWORD
 export async function resetPassword(req, res) {
   try {
     const { correo, password } = req.body;
@@ -368,7 +368,7 @@ export async function resetPassword(req, res) {
         .json({ ok: false, error: "Usuario no encontrado" });
     }
 
-    // 🔥 GUARDAR SIN HASH (como usas ahora)
+    //  GUARDAR SIN HASH (como usas ahora)
     await prisma.usuario.update({
       where: { id_usuario: usuario.id_usuario },
       data: {
@@ -378,7 +378,7 @@ export async function resetPassword(req, res) {
 
     return res.json({ ok: true });
   } catch (err) {
-    console.error("❌ Error al resetear contraseña:", err);
+    console.error(" Error al resetear contraseña:", err);
     return res.status(500).json({ ok: false, error: "Error de servidor" });
   }
 }
@@ -432,7 +432,7 @@ export async function register(req, res) {
       .json({ ok: false, error: "Error interno al registrar" });
   }
 }
-  // ================== GET ME (Usuario Actual) ==================
+  // Get pero de usuario actual
 export async function getMe(req, res) {
   try {
     const userId = req.user?.id_usuario;
@@ -499,7 +499,7 @@ export async function getMe(req, res) {
             id: Number(usuario.id_usuario),
             id_usuario: Number(usuario.id_usuario),
             id_coordinador: coord ? Number(coord.id_coordinador) : null,
-            id_area: coord ? Number(coord.id_area) : null,   // 👈 importante
+            id_area: coord ? Number(coord.id_area) : null,   
             username: usuario.correo,
             nombre: usuario.nombre,
             apellidos: usuario.apellido,
@@ -543,7 +543,7 @@ export async function getMe(req, res) {
     return res.json({ ok: true, usuario: userData });
 
   } catch (error) {
-    console.error('❌ Error en getMe:', error);
+    console.error(' Error en getMe:', error);
     return res.status(500).json({
       ok: false,
       error: 'Error al obtener datos del usuario'

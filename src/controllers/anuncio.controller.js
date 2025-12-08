@@ -8,7 +8,7 @@ import {
 export const crearAnuncioController = async (req, res, next) => {
   try {
     // ajusta esto según cómo guardes el usuario en el token
-    const id_admin = 7; //maites eso puse para probar ejemplos
+    const id_admin = 7; 
      // req.user?.id_usuario || req.user?.id || req.user?.id_admin || null;
 
     const anuncio = await crearAnuncioService({
@@ -25,7 +25,7 @@ export const crearAnuncioController = async (req, res, next) => {
     });
   }
 };
-
+// Controlador para listar todos los anuncios
 export const listarAnunciosController = async (_req, res, next) => {
   try {
     const data = await listarAnunciosService();
@@ -35,7 +35,7 @@ export const listarAnunciosController = async (_req, res, next) => {
     next(err);
   }
 };
-
+// Controlador para listar anuncios vigentes
 export const listarAnunciosVigentesController = async (_req, res, next) => {
   try {
     const data = await listarAnunciosVigentesService();
@@ -45,7 +45,7 @@ export const listarAnunciosVigentesController = async (_req, res, next) => {
     next(err);
   }
 };
-
+// Controlador para eliminar un anuncio por ID
 export const eliminarAnuncioController = async (req, res, next) => {
   try {
     const { id } = req.params;

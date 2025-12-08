@@ -221,3 +221,26 @@ export async function asignarInscritosAEvaluador(
   };
 }
 
+// ==================== DASHBOARD STATS ====================
+export async function getInscritosStats() {
+  // Total de inscritos
+  const [rowInscritos] = await prisma.$queryRaw`
+    SELECT COUNT(*)::bigint AS total
+    FROM inscritos
+  `;
+
+  // Total de clasificados
+  const [rowClasificados] = await prisma.$queryRaw`
+    SELECT COUNT(*)::bigint AS total
+    FROM clasificados
+  `;
+
+  return {
+    // convertimos BigInt -> Number
+    total: Number(rowInscritos?.total ?? 0n),
+    clasificados: Number(rowClasificados?.total ?? 0n),
+  };
+}
+
+
+

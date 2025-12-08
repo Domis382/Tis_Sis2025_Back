@@ -1,5 +1,5 @@
 import { publicarMedallero } from "../services/medallero.service.js";
-
+// POST /api/medallero/cargar
 export async function cargarMedallero(req, res, next) {
   try {
     const { rows } = req.body;
@@ -11,12 +11,12 @@ export async function cargarMedallero(req, res, next) {
     }
 
     const { resultados, errores } = await publicarMedallero(rows);
-
+// Asegúrarse de enviar la estructura CORRECTA
     return res.json({
       ok: true,
       message: "Medallero publicado correctamente.",
       total: resultados.length,
-      errores, // opcional, por si quieres mostrarlos en consola o UI
+      errores, 
     });
   } catch (err) {
     next(err);

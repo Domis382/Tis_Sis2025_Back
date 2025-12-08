@@ -26,7 +26,10 @@ r.get("/import/:id/reporte", requireRole("COORDINADOR",'Responsable de Area'), c
 // Listar inscritos con filtros (para la tabla de “Gestionar inscritos”)
 r.get("/", requireRole("COORDINADOR",'Responsable de Area'), inscritosCtrl.listarInscritos);
 
-// Asignar un lote de inscritos a un evaluador
+// stats para el dashboard de importar inscritos
+r.get("/stats", requireRole("COORDINADOR"), inscritosCtrl.getInscritosStats);
+
+// Asignar un lote de inscritos a un evaluador.
 r.post(
   "/asignar-evaluador",
   requireRole("COORDINADOR",'Responsable de Area'),
