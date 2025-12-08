@@ -10,26 +10,26 @@ const r = Router();
 r.post(
   "/import/preview",
   uploadFile.single("file"),
-  requireRole("COORDINADOR"),
+  requireRole("COORDINADOR",'Responsable de Area'),
   c.previewFile
 );
 r.post(
   "/import",
   uploadFile.single("file"),
-  requireRole("COORDINADOR"),
+  requireRole("COORDINADOR",'Responsable de Area'),
   c.runImport
 );
-r.get("/import/:id/reporte", requireRole("COORDINADOR"), c.downloadErrorReport);
+r.get("/import/:id/reporte", requireRole("COORDINADOR",'Responsable de Area'), c.downloadErrorReport);
 
 // ==================== GESTIÓN DE INSCRITOS ====================
 
 // Listar inscritos con filtros (para la tabla de “Gestionar inscritos”)
-r.get("/", requireRole("COORDINADOR"), inscritosCtrl.listarInscritos);
+r.get("/", requireRole("COORDINADOR",'Responsable de Area'), inscritosCtrl.listarInscritos);
 
 // Asignar un lote de inscritos a un evaluador
 r.post(
   "/asignar-evaluador",
-  requireRole("COORDINADOR"),
+  requireRole("COORDINADOR",'Responsable de Area'),
   inscritosCtrl.asignarInscritosAEvaluador
 );
 

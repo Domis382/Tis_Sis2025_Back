@@ -62,3 +62,9 @@ export async function deleteEvaluador(id) {
     }
   });
 }
+
+export async function findEvaluadorById(id) {
+  return await db.evaluador.findUnique({
+    where: { id_evaluador: Number(id) },
+  });
+}

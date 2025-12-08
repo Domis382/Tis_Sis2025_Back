@@ -26,6 +26,12 @@ export async function findResultadosClasificatoria(filters = {}) {
         id_inscritos: true,
         nombres_inscrito: true,
         apellidos_inscrito: true,
+        id_area: true,
+        area: {
+          select: {
+            nombre_area: true
+          }
+        },
         clasificados: {
           select: {
             estado: true,
@@ -57,6 +63,8 @@ export async function findResultadosClasificatoria(filters = {}) {
       return {
         id: primeraEval?.id_evaluacion ? Number(primeraEval.id_evaluacion) : Number(r.id_inscritos),
         id_inscrito: Number(r.id_inscritos),
+        id_area: r.id_area || null,
+        area: r.area?.nombre_area || null,
         id_evaluacion: primeraEval?.id_evaluacion ? Number(primeraEval.id_evaluacion) : null,
         competidor: fullName,
         nota,
