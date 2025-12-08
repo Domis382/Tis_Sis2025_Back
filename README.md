@@ -1,3 +1,7 @@
+# 📘 **README – Control de Ramas y Documentación del Proyecto**
+
+
+---
 A continuación, se presenta el enlace al prototipo funcional deployado:
 
 🔗 **Sistema en Producción / Preproducción:**
@@ -39,44 +43,210 @@ El prototipo permite probar la mayoría de las funcionalidades implementadas en 
 * **Usuario:** `correo@gmail.com`
 * **Contraseña:** `123456`
 
----
-
-# 📘 **3. Cumplimiento de Requerimientos**
-
-## ✅ **3.1 Requerimientos Críticos**
-
-| ID    | Requerimiento Crítico                                       | Implementado (Sí/No) | Evidencia                                                | Comentario                                                     |
-| ----- | ----------------------------------------------------------- | -------------------- | -------------------------------------------------------- | -------------------------------------------------------------- |
-| RC-01 | Tener una cuenta de Administrador                           | **Sí**               | Usuario: `juan.perez@sis.example.com` / Pass: `12345678` | Credenciales del administrador                                 |
-| RC-02 | El Administrador crea la(s) gestión(es)                     | **No**               | —                                                        | —                                                              |
-| RC-03 | El Administrador crea las áreas de competición              | **Sí**               | —                                                        | —                                                              |
-| RC-04 | El Administrador crea al Coordinador                        | **Sí**               | —                                                        | —                                                              |
-| RC-05 | Configurar puntuaciones mínimas por área                    | **Sí**               | —                                                        | Se parametrizó una nota mínima de clasificación general        |
-| RC-06 | Coordinador/Administrador crea responsables de área         | **Sí**               | —                                                        | —                                                              |
-| RC-07 | Responsables crean evaluadores                              | **Sí**               | —                                                        | El responsable solo crea evaluadores de su área                |
-| RC-08 | Vista previa CSV + asignación de competidores a evaluadores | **Sí**               | —                                                        | Coordinador filtra, previsualiza y asigna inscritos            |
-| RC-09 | Evaluadores evalúan competidores asignados                  | **Sí**               | —                                                        | Registro de evaluaciones en BDD                                |
-| RC-10 | Evaluadores envían listas evaluadas a responsables          | **Sí**               | —                                                        | Evaluaciones guardadas y recuperadas desde BDD                 |
-| RC-11 | Responsables revisan evaluaciones y generan clasificados    | **Sí**               | —                                                        | Filtro para exportar únicamente clasificados                   |
-| RC-12 | Publicación/exportación de listas de clasificados           | **Sí**               | —                                                        | Se muestra en la homepage                                      |
-| RC-13 | Competidores ven resultados de clasificación sin login      | **Sí**               | —                                                        | Acceso libre desde homepage                                    |
-| RC-14 | Administrador habilita fase final                           | **Sí**               | —                                                        | Actualiza roles mediante hook en frontend                      |
-| RC-15 | Configuración de puntajes y medallero                       | **Sí**               | —                                                        | Funciona localmente; se replanteó el modelo                    |
-| RC-16 | Coordinador reasigna clasificados a evaluadores             | **No**               | —                                                        | Vista de clasificados disponible, faltan detalles              |
-| RC-17 | Evaluadores evalúan clasificados asignados                  | **No**               | —                                                        | Se verá en la sección del evaluador cuando exista reasignación |
-| RC-18 | Responsables generan listas de ganadores                    | **No**               | —                                                        | Falta exportación final                                        |
-| RC-19 | Responsables publican/exportan ganadores                    | **No**               | —                                                        | Publicación hecha; falta exportación de ganadores              |
-| RC-20 | Competidores ven resultados de fase final sin login         | **Sí**               | —                                                        | Homepage enlaza al Medallero sin restricciones                 |
 
 ---
 
-## ⭐ **3.2 Requerimientos Deseables**
 
-| ID    | Requerimiento Deseable                        | Implementado (Sí/No) | Evidencia | Comentario                                                                                                              |
-| ----- | --------------------------------------------- | -------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
-| RD-01 | Interfaces responsivas móviles                | **No**               | —         | —                                                                                                                       |
-| RD-02 | Cambiar contraseña                            | **No**               | —         | —                                                                                                                       |
-| RD-03 | Recuperación de contraseña                    | **Sí**               | —         | Modal de login con “Recuperar contraseña”; usa OTP enviado por correo. Usuario puede cambiar contraseña inmediatamente. |
-| RD-04 | Email indicando clasificación/resultado final | **No**               | —         | —                                                                                                                       |
+# 🔢 **Control de Versionado (SemVer)**
+
+Usamos el estándar **SemVer (Semantic Versioning)**:
+
+* **MAJOR (X.0.0):** cambios grandes e incompatibles
+* **MINOR (0.X.0):** nuevas funcionalidades
+* **PATCH (0.0.X):** correcciones menores
+
+---
+
+# 🌿 **TABLA DE CONTROL DE RAMAS – FRONTEND**
+
+| **Rama**                                      | **Última actualización** | **Estado / Propósito**                                                   | **Responsable(s)**                        | **Versión** |
+| --------------------------------------------- | ------------------------ | ------------------------------------------------------------------------ | ----------------------------------------- | ----------- |
+| develop                                       | 1 hour ago               | Rama conectada a Vercel para deploy                                      | —                                         | —           |
+| devcopil                                      | 1 hour ago               | Rama de merge hacia develop                                              | —                                         | 2.1.1       |
+| merge/back-1                                  | 1 hour ago               | Rama para subir cambios locales en uno                                   | Eddy, Carla, Andrea, Carlos, Jaime, Maite | 2.1.0       |
+| homepageTIS/carlos                            | 13 hours ago             | Rama esporádica para homepage, login y dashboards                        | Carlos                                    | 1.5.2       |
+| Pru/prueba                                    | 13 hours ago             | Rama esporádica similar a homepageTIS/carlos                             | Carlos                                    | 1.5.2       |
+| coordinador                                   | yesterday                | Actualizaciones del requerimiento “coordinador envía listas a evaluador” | Maite, Eddy                               | 1.5.1       |
+| feature/evaluador-actualizado                 | last week                | Arreglos para roles de evaluador y coordinador                           | Maite                                     | 1.5.0       |
+| feature/Admin-registro-resp-coord             | last week                | Parametrización de área y medalla                                        | Carla                                     | 1.4.0       |
+| merge/back-2                                  | 2 weeks ago              | Arreglos en homepage (Login - Carrusel)                                  | Carlos                                    | 1.3.0       |
+| merge-back-3                                  | 2 weeks ago              | —                                                                        | —                                         | 1.2.0       |
+| feature/responsable-hu14-revisar-evaluaciones | 2 weeks ago              | Primer front de Responsable de Área                                      | Andrea                                    | 1.1.2       |
+| merge/prueba                                  | 2 weeks ago              | —                                                                        | —                                         | 1.1.1       |
+| feature/homepage-admin-resp-eva               | last month               | Primeras versiones del flujo evaluadores                                 | Jaime                                     | 1.1.0       |
+| merge/homepage-admin-resp-eva-cord            | last month               | Merge general de roles                                                   | —                                         | 1.0.0       |
+| homePage                                      | last month               | HomePage del sistema                                                     | —                                         | 0.3.0       |
+| feature/homepage-admin                        | last month               | Admin homepage                                                           | Maite                                     | 0.4.0       |
+| feature/homepage-admin-resp                   | last month               | Merge admin–responsable área                                             | Andrea                                    | 0.5.0       |
+| merge-home-importar                           | last month               | —                                                                        | —                                         | 0.2.1       |
+| feature/importar-inscritos                    | last month               | Funcionalidad de importación                                             | —                                         | 0.2.0       |
+| feature/admin-registro-responsables-area      | last month               | Primer front de administrador                                            | Maite, Carla                              | 0.1.0       |
+| feature/evaluador-registra-notas              | 2 months ago             | Registro de notas del evaluador                                          | Jaime                                     | 0.3.0       |
+
+---
+
+# 🔧 **TABLA DE CONTROL DE RAMAS – BACKEND**
+
+| **Rama**                                      | **Última actualización** | **Propósito / Uso**                                               | **Responsable(s)**                        |
+| --------------------------------------------- | ------------------------ | ----------------------------------------------------------------- | ----------------------------------------- |
+| develop                                       | 1 hour ago               | Rama para deploy en Vercel                                        | Eddy                                      |
+| devcopil                                      | 1 hour ago               | Merge hacia develop                                               | —                                         |
+| merge/back-1                                  | 1 hour ago               | Rama para subir cambios locales centralizados                     | Eddy, Carla, Andrea, Carlos, Jaime, Maite |
+| homepageTIS/carlos                            | 14 hours ago             | Cambios de homepage, login, clasificados, medalleros              | Carlos                                    |
+| Pru/prueba                                    | 14 hours ago             | Similar a homepageTIS/carlos, rama esporádica                     | Carlos                                    |
+| coordinador                                   | yesterday                | Actualizaciones del requerimiento “coordinador envía a evaluador” | Maite                                     |
+| feature/evaluador-actualizado                 | last week                | Cambios del requerimiento coordinador–evaluador                   | Maite                                     |
+| feature/Admin-registro-resp-coord-back        | last week                | Lógica de parametrización de fases y medallas                     | Carla                                     |
+| feature/back-merge-resp                       | 2 weeks ago              | Merge con Responsable de Área                                     | Andrea                                    |
+| merge/back-2                                  | 2 weeks ago              | —                                                                 | —                                         |
+| merge/prueba                                  | 2 weeks ago              | —                                                                 | —                                         |
+| feature/final-carlos                          | last month               | —                                                                 | —                                         |
+| feature/evaluador-registra-notas              | last month               | Funcionalidad evaluador                                           | Jaime                                     |
+| autenticacion                                 | last month               | —                                                                 | —                                         |
+| feature/back-autenticacion-admin              | last month               | Autenticación + admin                                             | Maite, Carlos                             |
+| feature/responsable-hu14-revisar-evaluaciones | last month               | —                                                                 | —                                         |
+| feature/importar-inscritos                    | last month               | —                                                                 | —                                         |
+| feature/admin-registro-responsables-area-back | last month               | Ajustes admin backend                                             | Maite, Carla                              |
+
+---
+
+# 👥 **Integrantes y Módulos Desarrollados**
+
+## **Maite Suarez Arraya – Rol Administrador**
+
+**Frontend**
+
+* homepage-admin
+* coordinador
+* merge/back-1
+  **APIs:** responsables, coordinador, área
+  **Backend:** controladores y servicios de administrador y coordinador
+
+---
+
+## **Carla Villarroel Mendieta – Rol Administrador**
+
+**Frontend**
+
+* homepage-admin
+* admin-registro-responsables-area
+* admin-registro-resp-coord
+  **Backend**
+* fases
+* responsable
+* coordinador
+
+---
+
+## **Jaime Cristhian Cáceres – Rol Evaluador**
+
+**Frontend**
+
+* registrar notas
+* componentes específicos (action_button, excel_grid, etc.)
+  **Backend**
+* evaluador y evaluación
+
+---
+
+## **Andrea Shirley Guarachi – Rol Responsable de Área**
+
+**Frontend**
+
+* evaluadores por área
+* clasificados
+* revisión de evaluaciones
+  **Backend**
+* usuarioEval
+* clasificados
+
+---
+
+## **Carlos Aurelio La Fuente – Login, Homepage, Clasificados, Medallero**
+
+**Frontend**
+
+* carrusel
+* login
+* clasificados
+* medallero
+  **Backend**
+* anuncios
+* autenticación
+* medallero
+* password recovery
+
+---
+
+# 🖥️ **FRONTEND – Instalación**
+
+```bash
+# 1. Clonar repositorio
+git clone <https://github.com/MaiteSuA/Tis_Sis2025.git>
+
+# 2. Instalar dependencias
+npm install
+
+# 3. Crear archivo .env
+VITE_API_URL=http://localhost:3000/api
+
+# 4. Ejecutar servidor
+npm run dev
+```
+
+---
+
+# 🗄️ **BACKEND – Instalación**
+
+```bash
+# 1. Clonar repositorio
+git clone <https://github.com/Domis382/Tis_Sis2025_Back.git>
+
+# 2. Instalar dependencias
+npm install
+```
+
+### Crear archivo **.env**
+
+```env
+DATABASE_URL="postgresql://postgres:DJupfwWPFrGGxVTsMptsYMkqYGwgOTLR@metro.proxy.rlwy.net:14474/railway"
+PORT=3000
+CORS_ORIGIN=http://localhost:5173
+
+EMAIL_USER=nextlevel.solutions2025@gmail.com
+EMAIL_PASS=nhfycxcbsqbsfbyk
+
+STUB_ROLE=COORDINADOR
+STUB_COORDINADOR_ID=1
+JWT_SECRET=supersecreto_ohsansi_2025
+```
+
+### Migraciones y dev server:
+
+```bash
+npx prisma migrate dev
+npx prisma generate
+npm run dev
+```
+
+---
+
+# 📝 **Descripción General del Proyecto**
+
+Sistema de evaluaciones para las Olimpiadas OHSANSI.
+Repositorios:
+
+* **Frontend:** Tis_sis2025
+* **Backend:** Tis_sis2025_back
+
+Incluye módulos completos para:
+
+* Administrador
+* Coordinador
+* Evaluador
+* Responsable de Área
+* Login y Homepage
+* Clasificados
+* Medallero
 
 ---
