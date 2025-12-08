@@ -5,23 +5,23 @@ import prisma from "../config/prisma.js";
 // Función para obtener todos los clasificados con datos de inscritos
 export async function getAllClasificados() {
   try {
-    console.log("🔍 getAllClasificados: Obteniendo clasificados con inscritos...");
+    console.log(" getAllClasificados: Obteniendo clasificados con inscritos...");
     
     // Usar la función del repositorio que hace el JOIN con inscritos
     const clasificados = await clasificadosRepo.findAllClasificados();
     
-    console.log(`✅ getAllClasificados: Encontrados ${clasificados.length} clasificados`);
+    console.log(` getAllClasificados: Encontrados ${clasificados.length} clasificados`);
     
     return clasificados;
   } catch (error) {
-    console.error("❌ Error en getAllClasificados:", error);
+    console.error(" Error en getAllClasificados:", error);
     throw new Error(`No se pudieron obtener los clasificados: ${error.message}`);
   }
 }
 
 // Función para crear o actualizar clasificados
 export async function createOrUpdateClasificados(rows) {
-  // 1️⃣ Primero, detectar y manejar duplicados en el MISMO Excel
+  // Primero, detectar y manejar duplicados en el MISMO Excel
   const uniqueRows = [];
   const duplicadosEncontrados = [];
   const procesados = new Set();
@@ -29,7 +29,7 @@ export async function createOrUpdateClasificados(rows) {
   rows.forEach((r, index) => {
     const clave = `${r.id_inscrito}-${r.fase ?? 2}`;
     if (procesados.has(clave)) {
-      console.warn(`⚠️ Duplicado en Excel: Fila ${index + 1}, Inscrito ${r.id_inscrito}, Fase ${r.fase}`);
+      console.warn(` Duplicado en Excel: Fila ${index + 1}, Inscrito ${r.id_inscrito}, Fase ${r.fase}`);
       duplicadosEncontrados.push({
         fila: index + 1,
         inscrito: r.id_inscrito,
@@ -42,32 +42,32 @@ export async function createOrUpdateClasificados(rows) {
     }
   });
   
-  console.log(`📊 Duplicados en Excel: ${duplicadosEncontrados.length}`);
-  console.log(`📊 Filas únicas a procesar: ${uniqueRows.length}`);
+  console.log(` Duplicados en Excel: ${duplicadosEncontrados.length}`);
+  console.log(` Filas únicas a procesar: ${uniqueRows.length}`);
   
   if (duplicadosEncontrados.length > 0) {
-    console.warn("📋 Lista de duplicados:", duplicadosEncontrados);
+    console.warn(" Lista de duplicados:", duplicadosEncontrados);
   }
 
   try {
-    console.log("🗑️  createOrUpdateClasificados: Borrando clasificados anteriores...");
+    console.log("createOrUpdateClasificados: Borrando clasificados anteriores...");
     
     // Borrar TODOS los clasificados existentes
     const borrados = await prisma.clasificados.deleteMany({});
-    console.log(`✅ Borrados ${borrados.count} registros anteriores de clasificados`);
+    console.log(` Borrados ${borrados.count} registros anteriores de clasificados`);
   } catch (error) {
-    console.error("❌ Error al borrar clasificados anteriores:", error);
+    console.error(" Error al borrar clasificados anteriores:", error);
     throw new Error(`No se pudo limpiar los clasificados anteriores: ${error.message}`);
   }
 
   const results = [];
   const errores = [];
 
-  // 2️⃣ Procesar solo las filas ÚNICAS
+  //  Procesar solo las filas ÚNICAS
   for (const [index, r] of uniqueRows.entries()) {
     try {
       if (!r.id_inscrito) {
-        console.warn(`⚠️ Fila ${index + 1} sin id_inscrito, se ignora:`, r);
+        console.warn(` Fila ${index + 1} sin id_inscrito, se ignora:`, r);
         errores.push(`Fila ${index + 1}: Sin id_inscrito`);
         continue;
       }
@@ -78,14 +78,14 @@ export async function createOrUpdateClasificados(rows) {
       });
 
       if (!inscritoExiste) {
-        console.warn(`⚠️ Fila ${index + 1}: Inscrito con ID ${r.id_inscrito} no existe. Se omite.`);
+        console.warn(` Fila ${index + 1}: Inscrito con ID ${r.id_inscrito} no existe. Se omite.`);
         errores.push(`Fila ${index + 1}: Inscrito ID ${r.id_inscrito} no existe`);
         continue;
       }
 
       const estado = "CLASIFICADO";
 
-      console.log(`📝 Procesando fila ${index + 1}: Inscrito ${r.id_inscrito}, Fase ${r.fase}`);
+      console.log(` Procesando fila ${index + 1}: Inscrito ${r.id_inscrito}, Fase ${r.fase}`);
 
       const record = await clasificadosRepo.upsertClasificado({
         id_inscrito: r.id_inscrito,
@@ -93,17 +93,17 @@ export async function createOrUpdateClasificados(rows) {
         estado,
       });
 
-      console.log(`✅ Clasificado creado: ID=${record.id_clasificado}, Inscrito=${r.id_inscrito}`);
+      console.log(` Clasificado creado: ID=${record.id_clasificado}, Inscrito=${r.id_inscrito}`);
       results.push(record);
     } catch (err) {
-      console.error(`❌ Error procesando fila ${index + 1}:`, r, err);
+      console.error(` Error procesando fila ${index + 1}:`, r, err);
       errores.push(`Fila ${index + 1}: ${err.message}`);
     }
   }
-
-  console.log(`📊 Total procesado: ${uniqueRows.length} filas únicas, exitosas: ${results.length}, errores: ${errores.length}`);
+//  Resumen final
+  console.log(` Total procesado: ${uniqueRows.length} filas únicas, exitosas: ${results.length}, errores: ${errores.length}`);
   
-  // 3️⃣ Preparar mensaje informativo para el frontend
+  //  Preparar mensaje informativo para el frontend
   let mensajeFinal = `Se procesaron ${uniqueRows.length} filas únicas del Excel.`;
   
   if (duplicadosEncontrados.length > 0) {

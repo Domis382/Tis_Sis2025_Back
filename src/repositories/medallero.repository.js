@@ -1,6 +1,6 @@
 // src/repositories/medallero.repository.js
 import prisma from "../config/prisma.js";
-
+// Crear o actualizar una medalla para un clasificado
 export async function upsertMedalla({
   id_clasificado,
   id_parametro,
@@ -17,7 +17,7 @@ export async function upsertMedalla({
   // Normalizar tipo de medalla
   let tipo = (tipo_medalla || "").toString().trim().toUpperCase();
 
-  // 🚨 SOLO CREATE (porque ya borramos todo antes)
+  //  SOLO CREATE (porque ya borramos todo antes)
   return prisma.medallas_clasificados.create({
     data: {
       id_parametro: idParam,

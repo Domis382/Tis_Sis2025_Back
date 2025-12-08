@@ -18,15 +18,11 @@ function crearTransporter() {
   });
 }
 
-/**
- * 1) /api/password/forgot
- *    - recibe { correo }
- *    - genera código, guarda en password_reset, envía email
- */
+// /api/password/request
 export async function enviarCodigoReset(req, res) {
   try {
     const { correo } = req.body;
-    console.log("📩 enviarCodigoReset -> correo:", correo);
+    console.log(" enviarCodigoReset -> correo:", correo);
 
     if (!correo) {
       return res
@@ -55,7 +51,7 @@ export async function enviarCodigoReset(req, res) {
       },
     });
 
-    console.log("✅ Código generado:", code);
+    console.log(" Código generado:", code);
 
     const transporter = crearTransporter();
 
@@ -71,11 +67,11 @@ export async function enviarCodigoReset(req, res) {
       `,
     });
 
-    console.log("📨 Email enviado correctamente");
+    console.log(" Email enviado correctamente");
 
     return res.json({ ok: true, message: "Código enviado" });
   } catch (err) {
-    console.error("❌ Error en enviarCodigoReset:", err);
+    console.error(" Error en enviarCodigoReset:", err);
     return res.status(500).json({
       ok: false,
       error: "Error interno al enviar código",
@@ -83,15 +79,12 @@ export async function enviarCodigoReset(req, res) {
   }
 }
 
-/**
- * 2) /api/password/verify
- *    - recibe { correo, code }
- *    - verifica que exista un password_reset válido
- */
+ //verifica que exista un password_reset válido
+ 
 export async function verificarCodigoReset(req, res) {
   try {
     const { correo, code } = req.body;
-    console.log("🔎 verificarCodigoReset:", { correo, code });
+    console.log(" verificarCodigoReset:", { correo, code });
 
     if (!correo || !code) {
       return res
@@ -125,23 +118,19 @@ export async function verificarCodigoReset(req, res) {
         .json({ ok: false, error: "Código inválido o expirado" });
     }
 
-    console.log("✅ Código válido");
+    console.log(" Código válido");
 
     return res.json({ ok: true });
   } catch (err) {
-    console.error("❌ Error en verificarCodigoReset:", err);
+    console.error(" Error en verificarCodigoReset:", err);
     return res
       .status(500)
       .json({ ok: false, error: "Error interno verificando código" });
   }
 }
 
-/**
- * 3) /api/password/reset
- *    - recibe { correo, password }
- *    - verifica el último código válido y marca used=true
- *    - actualiza la contraseña del usuario
- */
+// actualiza la contraseña del usuario
+ 
 export async function resetearPassword(req, res) {
   try {
     const { correo, password } = req.body;
@@ -179,7 +168,7 @@ export async function resetearPassword(req, res) {
       });
     }
 
-    // ⚠️ POR AHORA guardamos en texto plano para ser consistentes
+    //  POR AHORA guardamos en texto plano para ser consistentes
     await prisma.$transaction([
       prisma.usuario.update({
         where: { id_usuario: usuario.id_usuario },
@@ -191,11 +180,11 @@ export async function resetearPassword(req, res) {
       }),
     ]);
 
-    console.log("✅ Contraseña actualizada para", correo);
+    console.log(" Contraseña actualizada para", correo);
 
     return res.json({ ok: true, message: "Contraseña actualizada" });
   } catch (err) {
-    console.error("❌ Error en resetearPassword:", err);
+    console.error(" Error en resetearPassword:", err);
     return res
       .status(500)
       .json({ ok: false, error: "Error interno al cambiar contraseña" });

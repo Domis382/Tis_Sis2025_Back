@@ -4,9 +4,9 @@ import db from "../config/prisma.js";
 // Crear un nuevo clasificado (usamos CREATE porque borramos todo antes)
 export async function upsertClasificado({ id_inscrito, id_fase, estado }) {
   try {
-    console.log(`📌 Creando clasificado: inscrito=${id_inscrito}, fase=${id_fase}, estado=${estado}`);
+    console.log(` Creando clasificado: inscrito=${id_inscrito}, fase=${id_fase}, estado=${estado}`);
     // VERIFICA EL MODELO PRISMA
-    console.log("📋 Modelo clasificados disponible?", !!db.clasificados);
+    console.log(" Modelo clasificados disponible?", !!db.clasificados);
     
     return await db.clasificados.create({
       data: {
@@ -16,7 +16,7 @@ export async function upsertClasificado({ id_inscrito, id_fase, estado }) {
       },
     });
   } catch (error) {
-    console.error("❌ Error en upsertClasificado:", error);
+    console.error(" Error en upsertClasificado:", error);
     throw error;
   }
 }
@@ -24,7 +24,7 @@ export async function upsertClasificado({ id_inscrito, id_fase, estado }) {
 // Listar TODOS los clasificados con datos del inscrito
 export async function findAllClasificados() {
   try {
-    console.log("🔍 findAllClasificados: Ejecutando consulta SQL...");
+    console.log(" findAllClasificados: Ejecutando consulta SQL...");
     
     const results = await db.$queryRaw`
       SELECT 
@@ -50,10 +50,10 @@ export async function findAllClasificados() {
       ORDER BY i.nombres_inscrito, i.apellidos_inscrito
     `;
     
-    console.log(`✅ findAllClasificados: Encontrados ${results.length} registros`);
+    console.log(` findAllClasificados: Encontrados ${results.length} registros`);
     return results;
   } catch (error) {
-    console.error("❌ Error en findAllClasificados:", error);
+    console.error(" Error en findAllClasificados:", error);
     throw new Error(`Error al obtener clasificados: ${error.message}`);
   }
 }

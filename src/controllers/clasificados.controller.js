@@ -3,11 +3,11 @@ import * as clasificadosService from "../services/clasificados.service.js";
 // GET /api/clasificados
 export async function getAll(req, res, next) {
   try {
-    console.log("📥 GET /api/clasificados - Solicitando todos los clasificados");
+    console.log(" GET /api/clasificados - Solicitando todos los clasificados");
     
     const rows = await clasificadosService.getAllClasificados();
     
-    console.log(`✅ GET /api/clasificados - Enviando ${rows.length} clasificados`);
+    console.log(` GET /api/clasificados - Enviando ${rows.length} clasificados`);
     
     return res.json({ 
       ok: true,
@@ -16,7 +16,7 @@ export async function getAll(req, res, next) {
       count: rows.length
     });
   } catch (err) {
-    console.error("❌ Error en getAll:", err);
+    console.error(" Error en getAll:", err);
     next(err);
   }
 }
@@ -37,9 +37,9 @@ export async function uploadExcel(req, res, next) {
 
     const resultado = await clasificadosService.createOrUpdateClasificados(rows);
 
-    console.log(`✅ POST /api/clasificados/cargar - Procesadas ${resultado.results?.length || 0} filas`);
+    console.log(`POST /api/clasificados/cargar - Procesadas ${resultado.results?.length || 0} filas`);
 
-    // ✅ Asegúrate de enviar la estructura CORRECTA
+    // Asegúrarse de enviar la estructura CORRECTA
     return res.json({
       ok: true,
       message: resultado.mensaje || "Clasificados cargados correctamente.",
@@ -56,7 +56,7 @@ export async function uploadExcel(req, res, next) {
       }
     });
   } catch (err) {
-    console.error("❌ Error en uploadExcel:", err);
+    console.error(" Error en uploadExcel:", err);
     return res.status(500).json({
       ok: false,
       message: err.message || "Error interno del servidor",

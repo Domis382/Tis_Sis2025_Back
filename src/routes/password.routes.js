@@ -8,7 +8,7 @@ import {
 
 const router = Router();
 
-// Esto va debajo de /api (ver index.js)
+// Rutas para la recuperación de contraseña
 router.post("/password/forgot", enviarCodigoReset);
 router.post("/password/verify", verificarCodigoReset);
 router.post("/password/reset", resetearPassword);
