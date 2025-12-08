@@ -49,7 +49,7 @@ app.use('/api', (_req, res) => {
   res.status(404).json({ ok: false, message: 'Ruta no encontrada' });
 });
 
-// Manejo de errores.
+// Manejo de errores
 const errorHandler =
   errorMod.errorHandler ??
   errorMod.default ??
