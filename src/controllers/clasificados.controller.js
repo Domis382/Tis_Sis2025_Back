@@ -1,4 +1,5 @@
 import * as clasificadosService from "../services/clasificados.service.js";
+import prisma from "../config/prisma.js";
 
 // GET /api/clasificados
 export async function getAll(req, res, next) {
@@ -62,5 +63,36 @@ export async function uploadExcel(req, res, next) {
       message: err.message || "Error interno del servidor",
       error: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
+  }
+}
+
+export async function getFinalistas(req, res) {
+  try {
+    const faseFinal = await prisma.fases.findFirst({
+      where: { fase_final: true },
+    });
+
+    if (!faseFinal) {
+      return res.status(404).json({ ok: false, message: "No hay fase final configurada" });
+    }
+
+    const rows = await prisma.clasificados.findMany({
+      where: {
+        id_fase: faseFinal.id_fases,
+        estado: "CLASIFICADO",
+      },
+      include: { inscritos: true },
+      orderBy: { id_clasificado: "asc" },
+    });
+
+    res.json({
+      ok: true,
+      idFase: Number(faseFinal.id_fases),
+      count: rows.length,
+      data: rows,
+    });
+  } catch (err) {
+    console.error("Error en getFinalistas:", err);
+    res.status(500).json({ ok: false, message: err.message });
   }
 }

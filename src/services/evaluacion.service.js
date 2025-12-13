@@ -1,5 +1,6 @@
 // src/services/evaluacion.service.js
 import * as repo from "../repositories/evaluacion.repository.js";
+import * as clasRepo from "../repositories/clasificados.repository.js";
 
 /**
  * Si el usuario es EVALUADOR → retorna su id_evaluador (num).
@@ -61,4 +62,31 @@ export async function resolveNombreDisplay({ id_usuario, idEvaluador }) {
   } catch {
     return idEvaluador ? `Evaluador #${idEvaluador}` : null;
   }
+}
+
+export async function findResultadosFinal({ idNivel = null, search = null }) {
+  // 1) traer clasificados con datos del inscrito
+  const rows = await clasRepo.findAllClasificados(); // ya hace JOIN con inscritos
+
+  // 2) filtros de nivel / búsqueda (si vienen)
+  const filtra = (txt) => (txt ?? "").toString().toUpperCase();
+  const s = filtra(search);
+
+  const filtrados = rows
+    .filter(r => (idNivel ? Number(r.id_nivel) === Number(idNivel) : true))
+    .filter(r => {
+      if (!search) return true;
+      const cad = `${r.nombres_inscrito} ${r.apellidos_inscrito} ${r.ci_inscrito}`.toUpperCase();
+      return cad.includes(s);
+    })
+    .map(r => ({
+      id_inscrito: r.id_inscrito,
+      competidor: `${r.nombres_inscrito ?? ""} ${r.apellidos_inscrito ?? ""}`.trim(),
+      ci: r.ci_inscrito ?? "",
+      // En FINAL, puedes traer nota u observación de una tabla evaluacion final si la tienes:
+      nota: r.nota ?? null,
+      observacion: r.observacion ?? null
+    }));
+
+  return filtrados;
 }

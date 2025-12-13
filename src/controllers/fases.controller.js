@@ -67,3 +67,14 @@ export async function eliminarClasificadosController(req, res) {
     res.status(500).json({ error: "No se pudieron eliminar los clasificados." });
   }
 }
+
+export async function setFaseFinal(req, res, next) {
+  try {
+    const { activa } = req.body;
+    const row = await fasesService.setFaseFinalActiva(!!activa);
+    return res.json({
+      ok: true,
+      data: { fase_final: row.fase_final, nota_minima: row.nota_minima }
+    });
+  } catch (e) { next(e); }
+}

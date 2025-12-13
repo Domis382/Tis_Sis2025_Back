@@ -34,18 +34,23 @@ export async function listarInscritos(req, res, next) {
 /**
  * POST /api/inscritos/asignar-evaluador
  */
+// PATCH/POST: asignar inscritos a evaluador (acepta idFase, useFaseFinal, replaceExisting, exclusive)
 export async function asignarInscritosAEvaluador(req, res, next) {
   try {
-    const { idEvaluador, idsInscritos } = req.body;
+    const { idEvaluador, idsInscritos, idFase, useFaseFinal, replaceExisting, exclusive } = req.body;
     const user = req.user || null;
 
-    const resultado = await inscritosService.asignarInscritosAEvaluador(
+    const result = await inscritosService.asignarInscritosAEvaluador(
       idEvaluador,
       idsInscritos,
-      user
+      user,
+      idFase ?? null,
+      Boolean(useFaseFinal),
+      Boolean(replaceExisting),
+      Boolean(exclusive) // 👈 NUEVO
     );
 
-    return successResponse(res, resultado, 200);
+    return res.json({ ok: true, data: result });
   } catch (err) {
     next(err);
   }
@@ -59,5 +64,15 @@ export async function getInscritosStats(req, res, next) {
   } catch (e) {
     console.error("Error getInscritosStats:", e);
     next(e);
+  }
+}
+
+export async function pruneToFinalistas(req, res, next) {
+  try {
+    const { mode } = req.query; // 'delete' | 'soft' (default: 'soft')
+    const result = await inscritosService.pruneToFinalistas({ hardDelete: mode === "delete" });
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    next(err);
   }
 }

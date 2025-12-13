@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import routes from './routes/index.js';
 import anuncioRoutes from "./routes/anuncio.routes.js";
+import clasificadosRoutes from "./routes/clasificados.routes.js";
 
 // 👇 Soporta ambos tipos de export del errorHandler
 import * as errorMod from './middlewares/errorHandler.js';
@@ -40,6 +41,7 @@ app.use(express.urlencoded({ extended: false }));
 //  Rutas API 
 app.use('/api', routes);
 app.use("/api/anuncios", anuncioRoutes);
+app.use("/api/clasificados", clasificadosRoutes);
 
 //  Health 
 app.get('/', (_req, res) => res.send('API OK'));

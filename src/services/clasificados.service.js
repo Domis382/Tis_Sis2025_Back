@@ -1,7 +1,8 @@
 // src/services/clasificados.service.js
 import * as clasificadosRepo from "../repositories/clasificados.repository.js";
 import prisma from "../config/prisma.js";
-
+import * as fasesRepo from "../repositories/fases.repository.js";
+import * as evalRepo from "../repositories/evaluacion.repository.js";
 // Función para obtener todos los clasificados con datos de inscritos
 export async function getAllClasificados() {
   try {
@@ -126,4 +127,32 @@ export async function createOrUpdateClasificados(rows) {
     duplicados: duplicadosEncontrados,
     mensaje: mensajeFinal
   };
+}
+
+export async function promoverDesdeEvaluaciones({ nivel = null, limpiarPrevios = true }) {
+  const fase = await fasesRepo.findByNombre("CLASIFICATORIA");
+  const notaMinima = Number(fase?.nota_minima ?? 0);
+
+  // Traer IDs de inscritos que cumplen la nota mínima (de la primera fase)
+  const candidatos = await evalRepo.findInscritosQueCumplenNotaMinima({ notaMinima, nivel });
+
+  let inserted = 0, skipped = 0, deleted = 0;
+  await prisma.$transaction(async (tx) => {
+    if (limpiarPrevios) {
+      const del = await tx.clasificados.deleteMany({});
+      deleted = del.count;
+    }
+    for (const c of candidatos) {
+      try {
+        await tx.clasificados.create({
+          data: { id_inscrito: Number(c.id_inscrito), id_fase: 2, estado: 'CLASIFICADO' }
+        });
+        inserted++;
+      } catch {
+        skipped++; // ya estaba, etc.
+      }
+    }
+  });
+
+  return { totalCandidatos: candidatos.length, inserted, skipped, deleted };
 }
